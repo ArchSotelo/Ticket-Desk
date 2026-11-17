@@ -77,9 +77,9 @@ class ApplicationCompatibilityTest {
         var dashboard = json(request("GET", "/dashboard/stats?fechaDesde=2026-10-01&fechaHasta=2026-10-31", token, null), 200);
         assertThat(dashboard.at("/data/fechaDesde").asText()).isEqualTo("2026-10-01");
         assertThat(dashboard.at("/data/fechaHasta").asText()).isEqualTo("2026-10-31");
-        var openapi = json(request("GET", "/v3/api-docs", null, null), 200);
+        var openapi = json(request("GET", "/v3/api-docs", token, null), 200);
         assertThat(openapi.path("paths").has("/auth/login")).isTrue();
-        assertThat(request("GET", "/swagger-ui/index.html", null, null).statusCode()).isEqualTo(200);
+        assertThat(request("GET", "/swagger-ui/index.html", token, null).statusCode()).isEqualTo(200);
         var excel = request("GET", "/reports/tickets/excel", token, null);
         assertThat(excel.statusCode()).isEqualTo(200);
         try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(excel.body()))) {

@@ -35,7 +35,7 @@ function load(name, fileName) {
           return { Component: () => (component) => component, ViewChild: () => () => {} };
         if (dependency === '@angular/forms')
           return { Validators: { required: () => null, min: () => () => null } };
-        if (dependency === 'sweetalert2') return { default: { fire: () => Promise.resolve({}) } };
+        if (dependency === 'sweetalert2' || dependency.startsWith('sweetalert2/')) return { default: { fire: () => Promise.resolve({}) } };
         if (dependency.startsWith('@angular/') || dependency.startsWith('../core/')) return {};
         throw new Error('Dependencia inesperada: ' + dependency);
       },

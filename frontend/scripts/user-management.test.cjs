@@ -47,7 +47,7 @@ before(async () => {
           return { Component: () => (cls) => cls, ViewChild: () => () => {} };
         if (name === '@angular/forms') return forms;
         if (name === '@angular/common/http') return { HttpParams: Params };
-        if (name === 'sweetalert2') return { default: alerts };
+        if (name === 'sweetalert2' || name.startsWith('sweetalert2/')) return { default: alerts };
         if (name.startsWith('@angular/') || name.startsWith('../core/')) return {};
         throw new Error(name);
       },

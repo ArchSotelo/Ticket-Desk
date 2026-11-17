@@ -39,7 +39,7 @@ before(async () => {
         if (name === '@angular/forms') return forms;
         if (name === '@angular/core')
           return { Component: () => (component) => component, ViewChild: () => () => {} };
-        if (name === 'sweetalert2') return { default: { fire: () => Promise.resolve({}) } };
+        if (name === 'sweetalert2' || name.startsWith('sweetalert2/')) return { default: { fire: () => Promise.resolve({}) } };
         if (name.startsWith('@angular/') || name.startsWith('../core/')) return {};
         throw new Error('Dependencia inesperada: ' + name);
       },

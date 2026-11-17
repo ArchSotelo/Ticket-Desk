@@ -141,7 +141,8 @@ public class TicketServiceImpl implements TicketService {
         Ticket ticket = Ticket.builder()
                 // La fila necesita código al insertarse. Se reemplaza por el código final
                 // basado en el ID autoincremental, dentro de esta misma transacción.
-                .codigo("PENDING-" + UUID.randomUUID())
+                // Código temporal único que respeta el límite varchar(30) antes del INSERT.
+                .codigo("P-" + UUID.randomUUID().toString().replace("-", "").substring(0, 28))
                 .idempotencyKey(requestKey)
                 .titulo(createDTO.getTitulo())
                 .descripcion(createDTO.getDescripcion())

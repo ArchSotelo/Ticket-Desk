@@ -26,8 +26,9 @@ function loadSource(relativePath, dependencies, globals) {
       exports: module.exports,
       ...globals,
       require: (name) => {
-        if (!(name in dependencies)) throw new Error(`Dependencia inesperada: ${name}`);
-        return dependencies[name];
+        const dependency = name.startsWith('sweetalert2/') ? 'sweetalert2' : name;
+        if (!(dependency in dependencies)) throw new Error(`Dependencia inesperada: ${name}`);
+        return dependencies[dependency];
       },
     },
     { filename: file },

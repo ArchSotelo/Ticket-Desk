@@ -29,7 +29,7 @@ before(async () => {
         if (name === 'rxjs') return rxjs;
         if (name === '@angular/forms') return forms;
         if (name === '@angular/core') return { Component: () => (cls) => cls };
-        if (name === 'sweetalert2') return { default: { fire: async () => ({ isConfirmed: true }) } };
+        if (name === 'sweetalert2' || name.startsWith('sweetalert2/')) return { default: { fire: async () => ({ isConfirmed: true }) } };
         if (name.startsWith('@angular/') || name.startsWith('../core/')) return {};
         throw new Error(name);
       },
@@ -79,18 +79,19 @@ function fixture(options = {}) {
   calls[0].response.complete();
   return { component, calls, httpCalls, navigations, saved };
 }
-test('General separa cuatro opciones disponibles y tres próximas, sin inventar disponibilidad', () => {
+test('General muestra las opciones disponibles de configuración, seguridad y API', () => {
   const f = fixture();
-  assert.equal(f.component.visibleCards.length, 7);
+  assert.equal(f.component.visibleCards.length, 5);
   assert.equal(f.component.communicationCards.length, 1);
   assert.equal(f.component.serviceCards.length, 2);
-  assert.equal(f.component.upcomingCards.length, 3);
+  assert.equal(f.component.securityCards.length, 1);
+  assert.equal(f.component.documentationCards.length, 1);
   assert.equal(
     f.component.cards
       .filter((c) => c.available)
       .map((c) => c.id)
       .join(','),
-    'email,services,service-types,security',
+    'email,services,service-types,api-documentation,security',
   );
   f.component.ngOnDestroy();
 });
@@ -100,19 +101,17 @@ test('Servicios filtra solo sus dos opciones y no navega ni carga configuracione
   assert.equal(f.component.selected, 'home');
   assert.equal(f.component.visibleCards.map((c) => c.id).join(','), 'services,service-types');
   assert.equal(f.component.communicationCards.length, 0);
-  assert.equal(f.component.upcomingCards.length, 0);
   assert.equal(f.navigations.length, 0);
   assert.equal(f.calls.length, 1);
   f.component.ngOnDestroy();
 });
-test('Seguridad y Notificaciones también filtran dentro de la misma vista', () => {
+test('Seguridad y Notificaciones filtran dentro de la misma vista', () => {
   const f = fixture();
   f.component.selectCategory('security');
   assert.equal(f.component.visibleCards.map((c) => c.id).join(','), 'security');
   assert.equal(f.component.securityCards.length, 1);
-  assert.equal(f.component.upcomingCards.length, 0);
   f.component.selectCategory('notifications');
-  assert.equal(f.component.visibleCards.map((c) => c.id).join(','), 'email,whatsapp,notifications');
+  assert.equal(f.component.visibleCards.map((c) => c.id).join(','), 'email');
   assert.equal(f.component.communicationCards.length, 1);
   assert.equal(f.component.serviceCards.length, 0);
   assert.equal(f.component.selected, 'home');
@@ -146,7 +145,7 @@ test('restablecer filtros recupera el directorio completo y General seleccionado
   f.component.resetHubFilters();
   assert.equal(f.component.settingsFilter, 'all');
   assert.equal(f.component.searchControl.value, '');
-  assert.equal(f.component.visibleCards.length, 7);
+  assert.equal(f.component.visibleCards.length, 5);
   f.component.ngOnDestroy();
 });
 test('opciones próximas o desconocidas no abren editores, rutas ni peticiones', () => {

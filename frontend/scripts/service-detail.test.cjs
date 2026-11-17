@@ -89,7 +89,7 @@ function fixture(options = {}) {
         if (name === 'rxjs') return rxjs;
         if (name === '@angular/core')
           return { Component: () => (cls) => cls, ViewChild: () => () => {} };
-        if (name === 'sweetalert2')
+        if (name === 'sweetalert2' || name.startsWith('sweetalert2/'))
           return {
             default: {
               fire(args) {

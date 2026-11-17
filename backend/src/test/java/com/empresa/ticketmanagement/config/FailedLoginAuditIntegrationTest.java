@@ -120,14 +120,14 @@ class FailedLoginAuditIntegrationTest {
 
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
-    void disabledAndLockedAccountsAlsoReturn401AndKeepTheFailureEvent(boolean locked) throws Exception {
+    void disabledAndLockedAccountsReturnTheirAuthStatusAndKeepTheFailureEvent(boolean locked) throws Exception {
         var tx=new org.springframework.transaction.support.TransactionTemplate(transactions);
         tx.executeWithoutResult(status->{var user=users.findByUsername("tecnico1").orElseThrow();
             user.setEstado(locked?"ACTIVO":"INACTIVO");user.setBloqueadoHasta(locked?java.time.LocalDateTime.now().plusMinutes(5):null);users.save(user);});
         long before=lastId();
         try {
             var response=attempt("tecnico1","test-only-technician-password","browser","203.0.113.1");
-            assertThat(response.statusCode()).isEqualTo(401);
+            assertThat(response.statusCode()).isEqualTo(locked ? 423 : 401);
             assertThat(failuresAfter(before)).hasSize(1);
             assertThat(failuresAfter(before).getFirst().getDetalle()).contains("tecnico1");
         } finally {

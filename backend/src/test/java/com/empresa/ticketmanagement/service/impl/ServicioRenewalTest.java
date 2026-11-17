@@ -6,6 +6,7 @@ import com.empresa.ticketmanagement.dto.ServicioDTO;
 import com.empresa.ticketmanagement.entity.ConfiguracionServicio;
 import com.empresa.ticketmanagement.entity.Servicio;
 import com.empresa.ticketmanagement.exception.GlobalExceptionHandler;
+import com.empresa.ticketmanagement.exception.BusinessException;
 import com.empresa.ticketmanagement.repository.*;
 import com.empresa.ticketmanagement.service.ServicioService;
 import org.junit.jupiter.api.Test;
@@ -111,7 +112,7 @@ class ServicioRenewalTest {
         when(repository.findById(1L)).thenReturn(Optional.of(original));
         for (String state : List.of("FINALIZADO", "CANCELADO")) {
             original.setEstado(state);
-            assertThatThrownBy(() -> service.renovar(1L, edited())).isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> service.renovar(1L, edited())).isInstanceOf(BusinessException.class);
         }
         verify(repository, never()).save(any());
     }

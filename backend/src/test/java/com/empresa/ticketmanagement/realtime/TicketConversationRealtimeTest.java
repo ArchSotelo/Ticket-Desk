@@ -7,6 +7,7 @@ import com.empresa.ticketmanagement.notification.NotificacionService;
 import com.empresa.ticketmanagement.repository.TicketRepository;
 import com.empresa.ticketmanagement.security.*;
 import com.empresa.ticketmanagement.service.impl.TicketServiceImpl;
+import com.empresa.ticketmanagement.service.KanbanService;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,7 @@ class TicketConversationRealtimeTest {
  @EntityScan(basePackageClasses=Ticket.class)
  @EnableJpaRepositories(basePackageClasses=TicketRepository.class)
  @Import({SecurityConfig.class,JwtAuthFilter.class,JwtUtils.class,UserDetailsServiceCustom.class,TicketAccessPolicy.class,
-   TicketServiceImpl.class,TicketController.class,GlobalExceptionHandler.class,RealtimeWebSocketHandler.class,
+   TicketServiceImpl.class,KanbanService.class,TicketController.class,GlobalExceptionHandler.class,RealtimeWebSocketHandler.class,
    RealtimeAuthorizationService.class,RealtimeWebSocketConfig.class})
  static class App {}
  @LocalServerPort int port;

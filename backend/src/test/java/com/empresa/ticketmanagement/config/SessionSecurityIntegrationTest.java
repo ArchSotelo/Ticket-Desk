@@ -98,7 +98,7 @@ class SessionSecurityIntegrationTest {
         }
         var lockedUntil = jdbc.queryForObject("select bloqueado_hasta from usuarios where username='admin'", java.sql.Timestamp.class);
         assertThat(lockedUntil.toLocalDateTime()).isBetween(java.time.LocalDateTime.now().plusMinutes(14), java.time.LocalDateTime.now().plusMinutes(16));
-        json(request("POST", "/auth/login", null, mapper.writeValueAsString(java.util.Map.of("username", "admin", "password", PASSWORD))), 401);
+        json(request("POST", "/auth/login", null, mapper.writeValueAsString(java.util.Map.of("username", "admin", "password", PASSWORD))), 423);
         assertThat(jdbc.queryForObject("select bloqueado_hasta from usuarios where username='admin'", java.sql.Timestamp.class)).isEqualTo(lockedUntil);
         jdbc.update("update usuarios set bloqueado_hasta=? where username='admin'", java.sql.Timestamp.valueOf(java.time.LocalDateTime.now().minusSeconds(1)));
         json(profile(login()), 200);

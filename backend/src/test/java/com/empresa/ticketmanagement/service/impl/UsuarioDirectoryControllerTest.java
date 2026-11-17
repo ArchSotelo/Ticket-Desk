@@ -17,11 +17,11 @@ class UsuarioDirectoryControllerTest {
         verify(service).listar(eq("Ana"), eq("ROLE_TECNICO"), eq(12L), eq("INACTIVO"), argThat(page ->
                 page.getPageNumber() == 2 && page.getPageSize() == 5 && page.getSort().getOrderFor("id") != null));
     }
-    @Test void preservesLargeDirectoryRequestsUsedByTicketAssignment() {
+    @Test void capsLargeDirectoryRequestsAtTheMaximumPageSize() {
         UsuarioService service = mock(UsuarioService.class);
         when(service.listar(any(), any(), any(), any(), any())).thenReturn(Page.empty());
         new UsuarioController(service).listar(null, null, null, null, 0, 500);
-        verify(service).listar(isNull(), isNull(), isNull(), isNull(), argThat(page -> page.getPageSize() == 500));
+        verify(service).listar(isNull(), isNull(), isNull(), isNull(), argThat(page -> page.getPageSize() == 100));
     }
     @Test void normalizesNegativePageAndEmptySizeWithoutChangingFilters() {
         UsuarioService service = mock(UsuarioService.class);
