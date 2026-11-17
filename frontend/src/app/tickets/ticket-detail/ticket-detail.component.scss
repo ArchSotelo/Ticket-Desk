@@ -1,0 +1,142 @@
+.ticket-detail-page { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.loading-state { display: grid; gap: 14px; min-height: 300px; align-content: center; justify-items: center; text-align: center; }
+
+.attachment-viewer-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw; height: 100dvh; max-width: none; max-height: none;
+  margin: 0; border: 0; box-sizing: border-box;
+  overscroll-behavior: contain; overflow: hidden;
+  &::backdrop { background: transparent; }
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(2, 8, 23, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.attachment-viewer {
+  width: min(960px, 100%);
+  height: min(90dvh, 900px);
+  max-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 20px;
+  background: #111c33;
+  color: #e2e8f0;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+}
+
+.attachment-viewer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  flex-shrink: 0;
+  max-height: 35dvh; overflow: auto;
+}
+
+.attachment-viewer-header h3,
+.attachment-viewer-header p {
+  margin: 0;
+}
+
+.attachment-viewer-header h3 {
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.attachment-viewer-header p {
+  margin-top: 0.35rem;
+  color: #a8bad3;
+  line-height: 1.5;
+}
+
+.attachment-viewer-header button {
+  flex: 0 0 auto;
+  color: #bfdbfe;
+}
+
+.attachment-viewer-content,
+.attachment-viewer-file {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.attachment-viewer-content {
+  display: grid;
+  place-items: center;
+}
+
+.attachment-viewer-content img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.attachment-viewer-content.pdf-content {
+  display: block;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+}
+
+.attachment-viewer-content.pdf-content iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+}
+
+.attachment-viewer-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .attachment-viewer-backdrop {
+    padding: .6rem;
+  }
+
+  .attachment-viewer {
+    height: calc(100dvh - 1.2rem);
+    max-height: calc(100dvh - 1.2rem);
+    border-radius: 14px;
+  }
+
+  .attachment-viewer-header,
+  .attachment-viewer-content,
+  .attachment-viewer-file {
+    padding: .85rem;
+  }
+}
+
+.attachment-viewer-file > mat-icon {
+  width: 64px;
+  height: 64px;
+  color: #93c5fd;
+  font-size: 64px;
+}
+
+.attachment-viewer-file p {
+  margin: 0;
+  color: #a8bad3;
+  line-height: 1.5;
+}

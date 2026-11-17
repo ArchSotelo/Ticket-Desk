@@ -1,0 +1,39 @@
+<section class="service-types-page" aria-labelledby="service-types-title">
+  <header class="types-header">
+    <div class="types-heading"><button class="types-back" type="button" (click)="back()" [disabled]="busy" aria-label="Volver a ajustes" title="Volver a ajustes"><mat-icon aria-hidden="true">arrow_back</mat-icon></button><div><p class="types-breadcrumb">Ajustes / Servicios</p><h1 id="service-types-title">Tipos de servicio</h1><p class="types-subtitle">Organiza los tipos e iconos para clasificar tus servicios.</p></div></div>
+    <button class="types-primary" type="button" (click)="open()" [disabled]="actionsDisabled"><mat-icon aria-hidden="true">add</mat-icon>Nuevo tipo</button>
+  </header>
+  <div class="types-filters" role="search" aria-label="Filtros de tipos de servicio">
+    <div class="types-search"><mat-icon aria-hidden="true">search</mat-icon><label class="types-sr-only" for="type-search">Buscar por nombre o descripción</label><input id="type-search" type="search" placeholder="Buscar por nombre o descripción" [(ngModel)]="search" (ngModelChange)="filtersChanged()" autocomplete="off"></div>
+    <div class="types-state-field"><mat-icon aria-hidden="true">filter_list</mat-icon><label for="type-status">Estado</label><select id="type-status" [(ngModel)]="status" (ngModelChange)="filtersChanged()"><option value="">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></div>
+    <button class="types-secondary types-clear" type="button" (click)="clearFilters()" [disabled]="!hasFilters"><mat-icon aria-hidden="true">restart_alt</mat-icon>Limpiar</button>
+  </div>
+  <p class="types-message success" role="status" *ngIf="successMessage">{{ successMessage }}</p>
+  <p class="types-message error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <div class="types-message error types-load-error" role="alert" *ngIf="loadError"><span>{{ loadError }}</span><button class="types-secondary" type="button" (click)="load()" [disabled]="busy">Reintentar</button></div>
+  <section class="types-directory" aria-labelledby="types-directory-title" [attr.aria-busy]="loading">
+    <div class="types-directory-heading"><h2 id="types-directory-title">Tipos registrados</h2><span class="types-count" *ngIf="loaded">{{ filteredItems.length }} {{ filteredItems.length === 1 ? 'tipo' : 'tipos' }}</span></div>
+    <p class="types-loading" role="status" *ngIf="loading">{{ loaded ? 'Actualizando catálogo…' : 'Cargando tipos de servicio…' }}</p>
+    <p class="types-sr-only" aria-live="polite" aria-atomic="true" *ngIf="loaded && !loading">{{ filteredItems.length }} {{ filteredItems.length === 1 ? 'tipo encontrado' : 'tipos encontrados' }}</p>
+    <div class="types-grid" *ngIf="loaded">
+      <article class="type-card" *ngFor="let item of filteredItems; trackBy: trackType" [attr.aria-labelledby]="'type-name-' + item.id">
+        <div class="type-card-info"><span class="type-icon"><mat-icon aria-hidden="true">{{ iconFor(item) }}</mat-icon></span><div class="type-copy"><h3 [id]="'type-name-' + item.id">{{ item.nombre }}</h3><p>{{ item.descripcion?.trim() || 'Sin descripción' }}</p><span class="type-state" [class.inactive]="!item.activa">{{ item.activa ? 'Activo' : 'Inactivo' }}</span></div></div>
+        <div class="type-actions"><button class="types-secondary" type="button" (click)="edit(item)" [disabled]="actionsDisabled" [attr.aria-label]="'Editar ' + item.nombre"><mat-icon aria-hidden="true">edit</mat-icon>Editar</button><button class="type-toggle" type="button" (click)="toggle(item)" [disabled]="actionsDisabled" [attr.aria-label]="(item.activa ? 'Desactivar ' : 'Activar ') + item.nombre"><mat-icon aria-hidden="true">{{ item.activa ? 'toggle_on' : 'toggle_off' }}</mat-icon>{{ changingId === item.id ? 'Actualizando…' : item.activa ? 'Desactivar' : 'Activar' }}</button></div>
+      </article>
+    </div>
+    <div class="types-empty" *ngIf="loaded && !loading && !loadError && !filteredItems.length"><mat-icon aria-hidden="true">{{ hasFilters ? 'search_off' : 'folder_open' }}</mat-icon><h3>{{ hasFilters ? 'No hay tipos con estos filtros' : 'Todavía no hay tipos de servicio' }}</h3><p>{{ hasFilters ? 'Prueba con otro nombre, descripción o estado.' : 'Crea un tipo para organizar tus servicios.' }}</p><button *ngIf="hasFilters" type="button" class="types-secondary" (click)="clearFilters()">Limpiar filtros</button></div>
+    <footer class="types-footer" *ngIf="loaded">Mostrando <strong>{{ filteredItems.length }}</strong> de <strong>{{ items.length }}</strong> {{ items.length === 1 ? 'tipo' : 'tipos' }}<span *ngIf="hasFilters"> · Filtros aplicados</span></footer>
+  </section>
+  <dialog #typeEditor class="type-editor" aria-labelledby="type-editor-title" aria-describedby="type-editor-help" (cancel)="onCancel($event)" (click)="onBackdrop($event)">
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate [attr.aria-busy]="saving">
+      <header class="type-editor-header"><div><p class="types-breadcrumb">Catálogo de servicios</p><h2 id="type-editor-title">{{ editingId !== null ? 'Editar tipo de servicio' : 'Nuevo tipo de servicio' }}</h2><p id="type-editor-help">Completa el nombre, el icono y la descripción.</p></div><button class="types-icon-button" type="button" (click)="close()" [disabled]="saving" aria-label="Cerrar formulario"><mat-icon aria-hidden="true">close</mat-icon></button></header>
+      <div class="type-editor-body">
+        <label for="type-name">Nombre del tipo *</label><input id="type-name" type="text" formControlName="nombre" maxlength="100" placeholder="Ej. Infraestructura" autofocus [attr.aria-invalid]="!!fieldError('nombre')" aria-describedby="type-name-error"><p id="type-name-error" class="types-field-error" *ngIf="fieldError('nombre')">{{ fieldError('nombre') }}</p>
+        <label for="type-icon">Icono</label><div class="type-icon-field"><mat-icon aria-hidden="true">{{ form.get('icono')?.value || 'category' }}</mat-icon><select id="type-icon" formControlName="icono"><option *ngIf="hasCustomIcon" [value]="originalIcon">{{ originalIcon }} (icono actual)</option><option *ngFor="let icon of iconosDisponibles" [value]="icon.value">{{ icon.label }}</option></select></div><p class="types-field-error" *ngIf="fieldError('icono')">{{ fieldError('icono') }}</p>
+        <label for="type-description">Descripción <span>(opcional)</span></label><textarea id="type-description" rows="3" formControlName="descripcion" maxlength="255" placeholder="Describe este tipo de servicio." [attr.aria-invalid]="!!fieldError('descripcion')" aria-describedby="type-description-error"></textarea><p id="type-description-error" class="types-field-error" *ngIf="fieldError('descripcion')">{{ fieldError('descripcion') }}</p>
+        <p class="types-message error" role="alert" *ngIf="formError">{{ formError }}</p>
+      </div>
+      <footer class="type-editor-footer"><small>* Campos obligatorios</small><div><button class="types-secondary" type="button" (click)="close()" [disabled]="saving">Cancelar</button><button class="types-primary" type="submit" [disabled]="saving"><mat-icon aria-hidden="true">save</mat-icon>{{ saving ? 'Guardando…' : 'Guardar tipo' }}</button></div></footer>
+    </form>
+  </dialog>
+</section>

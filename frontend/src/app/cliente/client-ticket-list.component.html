@@ -1,0 +1,369 @@
+<div class="ticket-list-page client-ticket-workspace">
+  <header class="list-header">
+    <div>
+      <p class="list-eyebrow">Portal del cliente</p>
+      <h1>Mis tickets</h1>
+      <p>Consulta el estado y da seguimiento a tus solicitudes.</p>
+    </div>
+    <a mat-raised-button color="primary" routerLink="/cliente/nuevo-ticket" class="new-ticket-button">
+      <mat-icon>add_circle_outline</mat-icon>Nuevo ticket
+    </a>
+  </header>
+
+  <nav class="status-tabs" aria-label="Filtrar tickets por estado">
+    <button type="button" *ngFor="let tab of statusTabs" class="status-tab"
+      [class.selected]="estadoSeleccionado === tab.codigo" [attr.aria-pressed]="estadoSeleccionado === tab.codigo"
+      [disabled]="loadingTickets" (click)="seleccionarEstado(tab.codigo)">
+      <span>{{ tab.nombre }}</span>
+      <span class="status-count" [attr.aria-label]="statusCounts[tab.codigo] != null ? statusCounts[tab.codigo] + ' tickets' : 'Total no disponible'">
+        {{ statusCounts[tab.codigo] ?? (countsLoading ? '…' : '—') }}
+      </span>
+    </button>
+  </nav>
+
+  <section class="list-panel filter-card" aria-label="Filtros de tickets">
+    <form (ngSubmit)="aplicarFiltros()">
+      <div class="primary-filters">
+        <div class="list-field search-field">
+          <label for="client-ticket-search">Buscar por código o título</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <input id="client-ticket-search" matInput name="busqueda" [(ngModel)]="busqueda"
+              placeholder="Buscar por código o título">
+            <button mat-icon-button matSuffix type="submit" aria-label="Buscar tickets" [disabled]="loadingTickets"><mat-icon>search</mat-icon></button>
+          </mat-form-field>
+        </div>
+        <div class="list-field">
+          <label id="client-state-label">Estado</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-select name="estado" [(ngModel)]="estadoSeleccionado" aria-labelledby="client-state-label"
+              (ngModelChange)="aplicarFiltros()" [disabled]="loadingTickets">
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="NUEVO">Nuevo</mat-option>
+              <mat-option value="ASIGNADO">Asignado</mat-option>
+              <mat-option value="EN_PROCESO">En proceso</mat-option>
+              <mat-option value="PENDIENTE_CLIENTE">Pendiente cliente</mat-option>
+              <mat-option value="RESUELTO">Resuelto</mat-option>
+              <mat-option value="CERRADO">Cerrado</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="list-field">
+          <label id="client-priority-label">Prioridad</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-select name="prioridad" [(ngModel)]="prioridadSeleccionada" aria-labelledby="client-priority-label"
+              (ngModelChange)="aplicarFiltros()" [disabled]="loadingTickets">
+              <mat-option value="">Todas</mat-option>
+              <mat-option *ngFor="let p of prioridades" [value]="p.nombre">{{ p.nombre }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <button mat-stroked-button type="button" class="more-filters-button" (click)="toggleFilters()"
+          aria-controls="client-advanced-filters" [attr.aria-expanded]="filtersOpen">
+          <mat-icon>filter_alt</mat-icon>{{ filtersOpen ? 'Menos filtros' : 'Más filtros' }}
+        </button>
+      </div>
+
+      <div class="advanced-filters" id="client-advanced-filters" *ngIf="filtersOpen">
+        <div class="list-field">
+          <label id="client-category-label">Categoría</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-select name="categoria" [(ngModel)]="categoriaSeleccionada" aria-labelledby="client-category-label">
+              <mat-option value="">Todas</mat-option>
+              <mat-option *ngFor="let c of categorias" [value]="c.id">{{ c.nombre }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+        <div class="list-field">
+          <label for="client-date-from">Desde</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <input #fechaDesdeInput id="client-date-from" matInput type="date" name="fechaDesde" [(ngModel)]="fechaDesde">
+            <button mat-icon-button matSuffix type="button" aria-label="Seleccionar fecha desde" (click)="abrirCalendario(fechaDesdeInput)">
+              <mat-icon>calendar_month</mat-icon>
+            </button>
+          </mat-form-field>
+        </div>
+        <div class="list-field">
+          <label for="client-date-to">Hasta</label>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <input #fechaHastaInput id="client-date-to" matInput type="date" name="fechaHasta" [(ngModel)]="fechaHasta">
+            <button mat-icon-button matSuffix type="button" aria-label="Seleccionar fecha hasta" (click)="abrirCalendario(fechaHastaInput)">
+              <mat-icon>calendar_month</mat-icon>
+            </button>
+          </mat-form-field>
+        </div>
+        <div class="filter-actions">
+          <button mat-stroked-button type="button" [disabled]="loadingTickets" (click)="limpiarFiltros()">
+            <mat-icon>close</mat-icon>Limpiar
+          </button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="loadingTickets">
+            <mat-icon>search</mat-icon>Filtrar
+          </button>
+        </div>
+      </div>
+      <p class="filter-error" role="alert" *ngIf="filterError">{{ filterError }}</p>
+    </form>
+  </section>
+
+  <section class="list-panel table-card" [attr.aria-busy]="loadingTickets" aria-label="Mis tickets">
+    <div class="results-heading" aria-live="polite">
+      <p><strong>{{ totalElements }}</strong> {{ totalElements === 1 ? 'ticket encontrado' : 'tickets encontrados' }}</p>
+      <button mat-button type="button" *ngIf="hasActiveFilters && !filtersOpen" [disabled]="loadingTickets" (click)="limpiarFiltros()">
+        <mat-icon>close</mat-icon>Limpiar filtros
+      </button>
+    </div>
+
+    <div class="list-loading" *ngIf="loadingTickets; else listResult" role="status">
+      <mat-spinner diameter="32"></mat-spinner><span>Cargando tus tickets...</span>
+    </div>
+    <ng-template #listResult>
+      <div class="list-error" *ngIf="listError; else ticketResults" role="alert">
+        <mat-icon>error_outline</mat-icon><p>{{ listError }}</p>
+        <button mat-stroked-button type="button" (click)="cargarTickets()">Reintentar</button>
+      </div>
+      <ng-template #ticketResults>
+        <div class="table-scroll" *ngIf="tickets.length; else emptyState" role="region" aria-label="Tabla de tickets" tabindex="0">
+          <table mat-table [dataSource]="tickets">
+            <ng-container matColumnDef="titulo">
+              <th mat-header-cell *matHeaderCellDef>Ticket</th>
+              <td mat-cell *matCellDef="let element">
+                <div class="ticket-identity">
+                  <strong>{{ element.titulo }}</strong>
+                  <a [routerLink]="['/cliente/tickets', element.id]">{{ element.codigo }}</a>
+                </div>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="prioridad">
+              <th mat-header-cell *matHeaderCellDef>Prioridad</th>
+              <td mat-cell *matCellDef="let element">
+                <span class="ticket-badge" [attr.data-tone]="priorityTone(element.prioridadNombre)">
+                  <span class="badge-dot" aria-hidden="true"></span>{{ element.prioridadNombre }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="estado">
+              <th mat-header-cell *matHeaderCellDef>Estado</th>
+              <td mat-cell *matCellDef="let element">
+                <span class="ticket-badge" [attr.data-tone]="statusTone(element.estadoCodigo)">
+                  <span class="badge-dot" aria-hidden="true"></span>{{ element.estadoNombre }}
+                </span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="fecha">
+              <th mat-header-cell *matHeaderCellDef>Creado</th>
+              <td mat-cell *matCellDef="let element">{{ formatDate(element.fechaCreacion) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="acciones">
+              <th mat-header-cell *matHeaderCellDef>Acciones</th>
+              <td mat-cell *matCellDef="let element">
+                <a mat-stroked-button class="detail-link" [routerLink]="['/cliente/tickets', element.id]"
+                  [attr.aria-label]="'Ver detalle de ' + element.codigo"><mat-icon>visibility</mat-icon>Ver detalle</a>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
+        </div>
+      </ng-template>
+    </ng-template>
+
+    <div class="list-pagination" *ngIf="totalElements > 0 && !listError">
+      <p>Mostrando <strong>{{ firstItemIndex }}–{{ lastItemIndex }}</strong> de {{ totalElements }}</p>
+      <div class="list-pagination-controls">
+        <span id="client-page-size-label">Filas</span>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="page-size-select">
+          <mat-select [ngModel]="pageSize" (ngModelChange)="cambiarTamanoPagina($event)" aria-labelledby="client-page-size-label" [disabled]="loadingTickets">
+            <mat-option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-icon-button type="button" class="pagination-arrow" aria-label="Página anterior"
+          [disabled]="pageIndex === 0 || loadingTickets" (click)="irAPagina(pageIndex - 1)"><mat-icon>chevron_left</mat-icon></button>
+        <button type="button" class="pagination-page" *ngFor="let page of visiblePages()" [class.active]="page === pageIndex"
+          [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)"
+          [disabled]="loadingTickets" (click)="irAPagina(page)">{{ page + 1 }}</button>
+        <button mat-icon-button type="button" class="pagination-arrow" aria-label="Página siguiente"
+          [disabled]="pageIndex >= totalPages - 1 || loadingTickets" (click)="irAPagina(pageIndex + 1)"><mat-icon>chevron_right</mat-icon></button>
+      </div>
+    </div>
+  </section>
+
+  <ng-template #emptyState>
+    <div class="list-empty">
+      <mat-icon>{{ hasActiveFilters ? 'search_off' : 'inbox' }}</mat-icon>
+      <h2>{{ hasActiveFilters ? 'No encontramos tickets con esos filtros' : 'Todavía no tienes tickets' }}</h2>
+      <p>{{ hasActiveFilters ? 'Prueba otra búsqueda o limpia los filtros para ver tus solicitudes.' : 'Crea tu primera solicitud y consulta aquí su estado.' }}</p>
+      <button mat-stroked-button type="button" *ngIf="hasActiveFilters" (click)="limpiarFiltros()">Limpiar filtros</button>
+      <a mat-raised-button color="primary" *ngIf="!hasActiveFilters" routerLink="/cliente/nuevo-ticket">Nuevo ticket</a>
+    </div>
+  </ng-template>
+</div>
+
+<div class="ticket-modal-backdrop" *ngIf="showModal" (click)="cerrarModal()">
+  <div class="ticket-modal jira-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">Detalle del ticket</p>
+        <h3 *ngIf="ticketSeleccionado">{{ ticketSeleccionado.codigo }} - {{ ticketSeleccionado.titulo }}</h3>
+      </div>
+      <button mat-icon-button (click)="cerrarModal()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="modal-body" *ngIf="ticketSeleccionado; else loadingDetail">
+      <div class="ticket-summary">
+        <p>{{ ticketSeleccionado.descripcion }}</p>
+      </div>
+
+      <div class="meta-grid">
+        <div><span>Categoría</span><strong>{{ ticketSeleccionado.categoriaNombre }}</strong></div>
+        <div><span>Subcategoría</span><strong>{{ ticketSeleccionado.subcategoriaNombre || 'N/D' }}</strong></div>
+      </div>
+
+      <section class="attachments-section support-panel">
+        <div class="thread-header support-panel-header">
+          <h4>Archivos adjuntos</h4>
+          <small>Todos los documentos y evidencias cargados en este ticket.</small>
+        </div>
+
+        <div class="attachments-grid" *ngIf="ticketSeleccionado.attachments?.length; else noAttachments">
+          <button class="attachment-card" type="button" *ngFor="let attachment of ticketSeleccionado.attachments"
+            [class.image-attachment]="isImageAttachment(attachment)" (click)="abrirAdjunto(attachment)">
+            <ng-container *ngIf="isImageAttachment(attachment); else fileAttachmentSummary">
+              <img class="attachment-preview" [src]="attachmentDisplayUrl(attachment)"
+                [alt]="attachment.nombreOriginal">
+              <div class="attachment-info">
+                <strong>{{ attachment.nombreOriginal }}</strong>
+                <span>{{ formatBytes(attachment.tamanoBytes) }} · Imagen</span>
+              </div>
+              <span class="attachment-chip">
+                <mat-icon>visibility</mat-icon>
+                Abrir
+              </span>
+            </ng-container>
+
+            <ng-template #fileAttachmentSummary>
+              <mat-icon class="attachment-icon">{{ fileIcon(attachment.mimeType) }}</mat-icon>
+              <div class="attachment-info">
+                <strong>{{ attachment.nombreOriginal }}</strong>
+                <span>{{ formatBytes(attachment.tamanoBytes) }} · Archivo</span>
+              </div>
+              <span class="attachment-chip">
+                <mat-icon>download</mat-icon>
+                Descargar
+              </span>
+            </ng-template>
+          </button>
+        </div>
+
+        <ng-template #noAttachments>
+          <div class="thread-empty">
+            Todavía no hay archivos adjuntos en este ticket.
+          </div>
+        </ng-template>
+      </section>
+
+      <section class="thread-section">
+        <div class="thread-header">
+          <h4>Conversación</h4>
+          <small>Respuestas visibles del técnico y tus respuestas al ticket.</small>
+        </div>
+
+        <div class="thread-list support-thread-list" role="region" aria-label="Historial de mensajes" tabindex="0" *ngIf="conversationEntries(ticketSeleccionado) as conversation">
+          <article class="thread-item support-thread-card" [ngClass]="entry.isClient ? 'thread-client' : 'thread-tech'"
+            *ngFor="let entry of conversation">
+            <div class="thread-meta support-thread-meta">
+              <strong>{{ entry.isClient ? 'Tú' : entry.author }}</strong>
+              <span>{{ formatDateTime(entry.fechaCreacion) }}</span>
+            </div>
+            <div class="support-thread-body" [innerHTML]="entry.contenido | ticketMessage"></div>
+
+
+            <div class="detail-file-chips" *ngIf="entry.attachments.length">
+              <button type="button" *ngFor="let attachment of entry.attachments" (click)="abrirAdjunto(attachment)"><mat-icon>attach_file</mat-icon>{{ attachment.nombreOriginal }}</button>
+            </div>
+
+
+          </article>
+          <div class="thread-empty" *ngIf="!conversation.length">
+            Todavía no hay respuestas visibles en este ticket.
+          </div>
+        </div>
+      </section>
+
+      <section class="reply-section">
+        <button mat-stroked-button type="button" class="reply-toggle support-toggle"
+          [disabled]="isTicketClosed(ticketSeleccionado)" (click)="replyComposerOpen = !replyComposerOpen">
+          <mat-icon>{{ replyComposerOpen ? 'expand_less' : 'reply' }}</mat-icon>
+          {{ replyComposerOpen ? 'Ocultar respuesta' : 'Responder' }}
+        </button>
+
+        <div class="reply-composer support-panel" *ngIf="replyComposerOpen">
+          <div class="composer-header support-panel-header">
+            <div>
+              <h4>Responder y adjuntar archivos</h4>
+              <small>Escribe tu mensaje y agrega evidencias desde un solo bloque.</small>
+            </div>
+            <div class="composer-pill">
+              <mat-icon>reply</mat-icon>
+              <span>Respuesta</span>
+            </div>
+          </div>
+
+          <app-rich-reply-editor editorId="client-modal-response" label="Responder al técnico" [value]="replyText" (valueChange)="replyText = $event" [disabled]="isTicketClosed(ticketSeleccionado) || sendingReply"></app-rich-reply-editor>
+
+          <div class="composer-bottom support-composer-actions">
+            <div class="composer-actions support-composer-group">
+              <button mat-stroked-button type="button" class="composer-action support-composer-action"
+                [disabled]="isTicketClosed(ticketSeleccionado) || sendingReply" (click)="replyFileInput.click()">
+                <mat-icon>attach_file</mat-icon>
+                <span>Adjuntar archivo</span>
+              </button>
+              <input #replyFileInput type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.log,.csv" multiple hidden [disabled]="isTicketClosed(ticketSeleccionado) || sendingReply"
+                (change)="onReplyFilesSelected($event)">
+            </div>
+
+            <div class="composer-actions-right support-composer-actions-right">
+              <div class="pending-count support-pending-count" *ngIf="replyAttachments.length">
+                <mat-icon>attachment</mat-icon>
+                <span>{{ replyAttachments.length }} adjunto(s)</span>
+              </div>
+              <button mat-stroked-button type="button" (click)="cerrarModal()">Cerrar</button>
+              <button mat-raised-button color="primary" type="button"
+                [disabled]="isTicketClosed(ticketSeleccionado) || !replyText.trim() || sendingReply"
+                (click)="enviarRespuesta()">
+                <mat-icon>send</mat-icon>
+                {{ sendingReply ? 'Enviando...' : 'Enviar respuesta' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="pending-list" *ngIf="replyAttachments.length">
+            <div class="pending-item" *ngFor="let file of replyAttachments; let i = index">
+              <div>
+                <strong>{{ file.name }}</strong>
+                <span>{{ formatReplySize(file.size) }}</span>
+              </div>
+              <button mat-icon-button type="button" [disabled]="isTicketClosed(ticketSeleccionado)"
+                (click)="removeReplyFile(i)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="closed-banner" *ngIf="isTicketClosed(ticketSeleccionado)">
+            Este ticket ya está cerrado. No se pueden enviar más comentarios.
+          </div>
+
+          <div class="message success" *ngIf="successMessage">{{ successMessage }}</div>
+          <div class="message error" *ngIf="errorMessage">{{ errorMessage }}</div>
+        </div>
+      </section>
+    </div>
+
+    <ng-template #loadingDetail>
+      <div class="loading-detail">
+        <mat-spinner diameter="42"></mat-spinner>
+      </div>
+    </ng-template>
+  </div>
+</div>

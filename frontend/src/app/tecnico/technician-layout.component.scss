@@ -1,0 +1,171 @@
+    @use '../layouts/responsive-layout' as layout;
+    .tech-shell {
+      @include layout.shell;
+      background:
+        radial-gradient(circle at top left, rgba(21, 94, 239, 0.18), transparent 30%),
+        linear-gradient(180deg, #f8fbff 0%, #eef4fc 100%);
+    }
+
+    .tech-body {
+      @include layout.body;
+    }
+
+    .tech-sidebar {
+      width: 286px;
+      flex: 0 0 286px;
+      min-height: 0;
+      padding: 1.25rem;
+      background:
+        radial-gradient(circle at top left, rgba(96, 165, 250, 0.16), transparent 30%),
+        linear-gradient(180deg, #061225 0%, #0b284f 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: var(--shadow-lg);
+      border-radius: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      height: 100%;
+      max-height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: width 0.25s ease;
+    }
+
+    .tech-sidebar.collapsed {
+      width: 104px;
+      flex-basis: 104px;
+      padding: 0.85rem 0.65rem;
+    }
+
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .brand-mark {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa, #93c5fd);
+      color: #061225;
+      letter-spacing: 1px;
+    }
+
+    .brand-block h1 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .brand-block p {
+      margin: 0.15rem 0 0;
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 0.85rem;
+    }
+
+    .tech-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .tech-nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.92rem 1rem;
+      border-radius: 16px;
+      color: rgba(255, 255, 255, 0.86);
+      text-decoration: none;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .tech-nav a:hover,
+    .tech-nav a.active {
+      background: rgba(255, 255, 255, 0.11);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      transform: translateX(3px);
+    }
+
+    .tech-sidebar.collapsed .tech-nav {
+      gap: 0.5rem;
+    }
+
+    .tech-sidebar.collapsed .tech-nav a {
+      justify-content: center;
+      gap: 0;
+      min-height: 54px;
+      padding: 0.85rem 0.5rem;
+      border-radius: 18px;
+    }
+
+    .tech-sidebar.collapsed .tech-nav a mat-icon {
+      margin: 0;
+      width: 24px;
+      height: 24px;
+      font-size: 24px;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .session-card {
+      padding: 1rem;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .session-card small,
+    .session-card span {
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .logout-btn {
+      justify-content: center;
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .tech-main {
+      @include layout.main;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(96, 165, 250, 0.58) transparent;
+      background: var(--bg-surface);
+      border: 1px solid rgba(219, 228, 240, 0.95);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(18px);
+    }
+
+    .tech-main::-webkit-scrollbar { width: 8px; }
+    .tech-main::-webkit-scrollbar-track { background: transparent; }
+    .tech-main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(96, 165, 250, 0.58); }
+
+    .sidebar-backdrop { @include layout.backdrop; }
+    @media (max-width: 960px) {
+      .tech-sidebar {
+        @include layout.mobile-drawer;
+        border-radius: 22px;
+      }
+      .tech-sidebar.mobile-open { @include layout.mobile-drawer-open; }
+
+      .sidebar-footer {
+        display: none;
+      }
+    }

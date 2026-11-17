@@ -1,0 +1,76 @@
+<section class="service-detail-page" aria-labelledby="service-detail-title">
+  <header class="detail-header">
+    <button type="button" class="sd-button sd-secondary" [routerLink]="returnPath" [attr.aria-label]="fromHistory ? 'Historial de servicios' : 'Servicios'"><mat-icon aria-hidden="true">arrow_back</mat-icon>{{ fromHistory ? 'Volver al historial' : 'Volver a Servicios' }}</button>
+    <div class="detail-actions" *ngIf="servicio">
+      <button type="button" class="sd-button sd-secondary" [routerLink]="[basePath, servicio.id, 'historial']"><mat-icon aria-hidden="true">history</mat-icon> Historial</button>
+      <ng-container *ngIf="puedeEditarObservaciones">
+        <button type="button" class="sd-button sd-primary" [disabled]="busy" (click)="abrirRenovacion()"><mat-icon aria-hidden="true">autorenew</mat-icon> Renovar</button>
+        <button type="button" class="sd-button sd-finish" [disabled]="busy" (click)="finalizar()"><mat-icon aria-hidden="true">task_alt</mat-icon> Finalizar servicio</button>
+        <button type="button" class="sd-button sd-danger" [disabled]="busy" (click)="cancelar()"><mat-icon aria-hidden="true">cancel</mat-icon> Cancelar servicio</button>
+      </ng-container>
+    </div>
+  </header>
+  <div class="sd-feedback" role="status" *ngIf="loading">Cargando detalle del servicio…</div>
+  <div class="sd-feedback sd-error" role="alert" *ngIf="loadError"><p>{{ loadError }}</p><button class="sd-button sd-secondary" type="button" (click)="load()">Reintentar servicio</button></div>
+  <div class="sd-feedback sd-error" role="alert" *ngIf="iconsError"><p>{{ iconsError }}</p><button type="button" class="sd-button sd-secondary" [disabled]="loadingIcons" (click)="loadCategorias()">Reintentar icono</button></div>
+
+  <ng-container *ngIf="servicio">
+    <div class="detail-hero">
+      <div class="detail-brand"><span class="detail-service-icon"><mat-icon aria-hidden="true">{{ iconoTipo(servicio.tipo) }}</mat-icon></span><div><p class="sd-eyebrow">Detalle del servicio</p><h1 id="service-detail-title">{{ servicio.nombre }}</h1><p class="sd-muted">{{ servicio.proveedor }} · {{ servicio.tipo }}</p></div></div>
+      <span class="sd-status" [attr.data-state]="servicio.estado"><i aria-hidden="true"></i>{{ label(servicio.estado) }}</span>
+    </div>
+    <section class="detail-period-card sd-card" [attr.data-state]="servicio.estado" aria-labelledby="service-period-title">
+      <div class="period-heading"><h2 id="service-period-title">Periodo del servicio</h2><span>{{ diasVigencia() }} días de vigencia</span></div>
+      <div class="period-progress" role="progressbar" aria-label="Periodo transcurrido del servicio" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="progresoVigencia() | number:'1.0-0'"><span [style.width.%]="progresoVigencia()"></span></div>
+      <div class="period-dates"><span>Inicio <b>{{ servicio.fechaInicio | date:'dd/MM/yyyy' }}</b></span><span>Fin <b>{{ servicio.fechaFin | date:'dd/MM/yyyy' }}</b></span></div>
+      <p class="period-notice" *ngIf="periodMessage()"><mat-icon aria-hidden="true">{{ puedeEditarObservaciones ? 'schedule' : 'lock' }}</mat-icon>{{ periodMessage() }}</p>
+    </section>
+
+    <div class="detail-grid">
+      <div class="detail-main-column">
+        <article class="sd-card" aria-labelledby="service-information-title">
+          <header class="sd-card-heading"><span class="sd-heading-icon"><mat-icon aria-hidden="true">info_outline</mat-icon></span><h2 id="service-information-title">Información del servicio</h2></header>
+          <dl class="data-grid"><div><dt>Proveedor</dt><dd>{{ servicio.proveedor }}</dd></div><div><dt>Responsable</dt><dd>{{ servicio.responsable || 'Sin asignar' }}</dd></div><div><dt>Tipo</dt><dd>{{ servicio.tipo }}</dd></div><div><dt>Costo mensual</dt><dd class="sd-cost">{{ formatCost() }}</dd></div></dl>
+        </article>
+        <article class="sd-card observations-panel" [class.observations-locked]="!puedeEditarObservaciones" aria-labelledby="service-notes-title">
+          <header class="sd-card-heading"><span class="sd-heading-icon"><mat-icon aria-hidden="true">{{ puedeEditarObservaciones ? 'edit_note' : 'lock' }}</mat-icon></span><h2 id="service-notes-title">Observaciones</h2></header>
+          <p id="service-notes-hint" class="sd-muted">{{ puedeEditarObservaciones ? 'Agrega información relevante sobre este servicio.' : 'Las observaciones no se pueden modificar en un servicio cancelado o finalizado.' }}</p>
+          <label for="service-notes" class="sd-sr-only">Observaciones del servicio</label>
+          <textarea id="service-notes" [(ngModel)]="servicio.notas" rows="4" maxlength="4000" [readonly]="!puedeEditarObservaciones || busy" aria-describedby="service-notes-hint service-notes-count" placeholder="Escribe aquí las observaciones del servicio..."></textarea>
+          <div class="observations-actions"><span id="service-notes-count">{{ (servicio.notas || '').length }}/4000</span><button type="button" class="sd-button sd-secondary" [disabled]="!puedeEditarObservaciones || busy" (click)="guardarObservaciones()"><mat-icon aria-hidden="true">save</mat-icon>{{ guardandoObservaciones ? 'Guardando...' : 'Guardar observaciones' }}</button></div>
+        </article>
+        <article class="sd-card cancellation-note" *ngIf="servicio.observacionCancelacion"><header class="sd-card-heading"><mat-icon aria-hidden="true">info_outline</mat-icon><h2>Motivo de cancelación</h2></header><p>{{ servicio.observacionCancelacion }}</p></article>
+      </div>
+      <article class="sd-card invoice-card" aria-labelledby="service-files-title">
+        <header class="sd-card-heading"><span class="sd-heading-icon"><mat-icon aria-hidden="true">attach_file</mat-icon></span><h2 id="service-files-title">Archivos adjuntos</h2><span class="sd-file-count" aria-live="polite">{{ attachmentCount }} {{ attachmentCount === 1 ? 'archivo' : 'archivos' }}</span></header>
+        <p class="sd-muted">Facturas, comprobantes e imágenes del servicio.</p>
+        <input #invoice type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.log,.csv" multiple hidden [disabled]="!puedeGestionarArchivos || busy" (change)="subirFacturas($event)">
+        <div class="invoice-dropzone" *ngIf="puedeGestionarArchivos"><mat-icon aria-hidden="true">upload</mat-icon><button type="button" class="sd-button sd-secondary" [disabled]="busy" (click)="invoice.click()">{{ subiendoFacturas ? 'Adjuntando archivos...' : 'Seleccionar archivos' }}</button><p>Puedes adjuntar varios archivos.</p></div>
+        <p class="attachments-locked" *ngIf="!puedeGestionarArchivos"><mat-icon aria-hidden="true">lock</mat-icon>El servicio está cerrado. No se pueden adjuntar ni eliminar archivos.</p>
+        <div class="sd-files-empty" *ngIf="!attachmentCount"><mat-icon aria-hidden="true">description</mat-icon><p>Todavía no hay archivos adjuntos.</p></div>
+        <div class="service-attachments-list" *ngIf="attachmentCount">
+          <div class="service-attachment-item" *ngIf="servicio.facturaNombre">
+            <button class="invoice-button" type="button" [attr.aria-label]="'Previsualizar ' + servicio.facturaNombre" (click)="abrirFactura()"><span class="invoice-file-icon"><mat-icon aria-hidden="true">{{ servicio.facturaMime?.startsWith('image/') ? 'image' : servicio.facturaMime === 'application/pdf' ? 'picture_as_pdf' : 'description' }}</mat-icon></span><span class="invoice-file-copy"><strong>{{ servicio.facturaNombre }}</strong><small>Comprobante adjunto</small></span><mat-icon aria-hidden="true">visibility</mat-icon></button>
+            <button type="button" class="sd-icon-button sd-delete" *ngIf="puedeGestionarArchivos" [disabled]="busy" [attr.aria-label]="'Eliminar ' + servicio.facturaNombre" (click)="eliminarFactura()"><mat-icon aria-hidden="true">delete_outline</mat-icon></button>
+          </div>
+          <div class="service-attachment-item" *ngFor="let adjunto of servicio.adjuntos">
+            <button type="button" class="invoice-button" [attr.aria-label]="'Previsualizar ' + adjunto.nombreOriginal" (click)="abrirAdjunto(adjunto)"><span class="invoice-file-icon"><mat-icon aria-hidden="true">{{ (adjunto.mimeType || '').startsWith('image/') ? 'image' : adjunto.mimeType === 'application/pdf' ? 'picture_as_pdf' : 'description' }}</mat-icon></span><span class="invoice-file-copy"><strong>{{ adjunto.nombreOriginal }}</strong><small>{{ formatoTamano(adjunto.tamanoBytes) }} · Ver archivo</small></span><mat-icon aria-hidden="true">visibility</mat-icon></button>
+            <button type="button" class="sd-icon-button sd-delete" *ngIf="puedeGestionarArchivos" [disabled]="busy" [attr.aria-label]="'Eliminar ' + adjunto.nombreOriginal" (click)="eliminarAdjunto(adjunto)"><mat-icon aria-hidden="true">delete_outline</mat-icon></button>
+          </div>
+        </div>
+        <p class="sd-preview-hint">Los archivos se pueden previsualizar antes de descargarlos. Algunos formatos solo permiten descarga.</p>
+      </article>
+    </div>
+  </ng-container>
+</section>
+
+<dialog #attachmentDialog class="attachment-viewer" aria-modal="true" aria-labelledby="service-viewer-title" (cancel)="$event.preventDefault(); cerrarFactura()" (click)="closeOnBackdrop($event)">
+  <section class="attachment-viewer-panel">
+    <header class="attachment-viewer-header"><div><h2 id="service-viewer-title">{{ facturaViewerName }}</h2><p>Archivo adjunto del servicio</p></div><button type="button" class="sd-icon-button" aria-label="Cerrar visor" (click)="cerrarFactura()"><mat-icon aria-hidden="true">close</mat-icon></button></header>
+    <div class="attachment-viewer-content" role="status" *ngIf="facturaViewerLoading">Cargando archivo...</div>
+    <div class="attachment-viewer-content" *ngIf="facturaViewer && !facturaViewerLoading && facturaViewerKind === 'image'"><img [src]="facturaViewerUrl" [alt]="facturaViewerName"></div>
+    <div class="attachment-viewer-content pdf-content" *ngIf="facturaViewer && !facturaViewerLoading && facturaViewerKind === 'pdf'"><iframe sandbox="allow-same-origin" referrerpolicy="no-referrer" [src]="facturaViewerSafeUrl" [title]="facturaViewerName"></iframe></div>
+    <div class="attachment-viewer-content attachment-viewer-file" *ngIf="facturaViewer && !facturaViewerLoading && facturaViewerKind === 'file'"><mat-icon aria-hidden="true">description</mat-icon><p>Este tipo de archivo no tiene vista previa.</p></div>
+    <footer class="attachment-viewer-footer" *ngIf="!facturaViewerLoading"><button type="button" class="sd-button sd-secondary" (click)="descargarFactura()"><mat-icon aria-hidden="true">download</mat-icon> Descargar</button><button type="button" class="sd-button sd-primary" (click)="cerrarFactura()">Cerrar</button></footer>
+  </section>
+</dialog>

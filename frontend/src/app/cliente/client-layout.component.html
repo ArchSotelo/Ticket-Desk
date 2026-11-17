@@ -1,0 +1,39 @@
+<div class="client-shell page-shell" (keydown.escape)="navigation.closeMobile()">
+  <app-topbar [sidebarExpanded]="navigation.expanded()" (toggleSidebar)="navigation.toggle()"></app-topbar>
+
+  <div class="client-body">
+    <button *ngIf="navigation.isCompact() && navigation.mobileOpen()" class="sidebar-backdrop" aria-label="Cerrar menú" (click)="navigation.closeMobile()"></button>
+    <aside class="client-sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="navigation.mobileOpen()" (click)="navigation.closeMobile()">
+
+      <nav class="client-nav">
+        <a routerLink="/cliente" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <mat-icon>space_dashboard</mat-icon>
+          <span *ngIf="!sidebarCollapsed">Inicio</span>
+        </a>
+        <a routerLink="/cliente/tickets" routerLinkActive="active">
+          <mat-icon>confirmation_number</mat-icon>
+          <span *ngIf="!sidebarCollapsed">Mis tickets</span>
+        </a>
+        <a routerLink="/cliente/knowledge-base" routerLinkActive="active" aria-label="Base de conocimiento" [attr.title]="sidebarCollapsed ? 'Base de conocimiento' : null">
+          <mat-icon aria-hidden="true">menu_book</mat-icon>
+          <span *ngIf="!sidebarCollapsed">Base de conocimiento</span>
+        </a>
+      </nav>
+
+      <!--Modificar para mensaje de mejora-->
+      <!-- <div class="sidebar-footer" *ngIf="!sidebarCollapsed">
+            <div class="session-card">
+              <small>Sesión activa</small>
+              <strong>{{ currentUser?.fullName }}</strong>
+              <span>{{ currentUser?.email }}</span>
+            </div>
+          </div> -->
+
+    </aside>
+
+    <main class="client-main">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+  <app-brand-footer></app-brand-footer>
+</div>

@@ -1,0 +1,71 @@
+<section class="staff-kanban-workspace" aria-labelledby="board-heading">
+  <header class="staff-kanban-heading">
+    <div>
+      <p class="staff-kanban-eyebrow">Mesa de ayuda</p>
+      <h1 id="board-heading">Tablero Kanban</h1>
+      <p>Organiza tus incidencias y arrastra las tarjetas para actualizar su estado.</p>
+    </div>
+    <nav class="staff-kanban-actions" aria-label="Acciones del tablero">
+      <a class="staff-kanban-button staff-kanban-secondary" [routerLink]="listRoute"><mat-icon aria-hidden="true">format_list_bulleted</mat-icon>Ver lista de tickets</a>
+      <a class="staff-kanban-button staff-kanban-primary" [routerLink]="newTicketRoute"><mat-icon aria-hidden="true">add</mat-icon>Nuevo ticket</a>
+    </nav>
+  </header>
+
+  <form class="staff-kanban-filters" (submit)="$event.preventDefault(); applyFilters()" aria-label="Filtros del tablero">
+    <div class="staff-kanban-field staff-kanban-search">
+      <label for="board-search">Buscar ticket</label>
+      <div><mat-icon aria-hidden="true">search</mat-icon><input id="board-search" name="search" type="search" placeholder="Código, título o cliente" [(ngModel)]="filters.search" (ngModelChange)="applyFilters()" [disabled]="savingTicketId !== undefined"></div>
+    </div>
+    <div class="staff-kanban-field">
+      <label for="board-priority">Prioridad</label>
+      <select id="board-priority" name="priority" [(ngModel)]="filters.priority" (ngModelChange)="applyFilters()" [disabled]="savingTicketId !== undefined">
+        <option value="">Todas las prioridades</option>
+        <option *ngFor="let priority of priorities" [value]="priority">{{ priority }}</option>
+        <option *ngIf="filters.priority && !priorities.includes(filters.priority)" [value]="filters.priority">{{ filters.priority }}</option>
+      </select>
+    </div>
+    <div class="staff-kanban-field">
+      <label for="board-technician">Técnico</label>
+      <select id="board-technician" name="technician" [(ngModel)]="filters.technician" (ngModelChange)="applyFilters()" [disabled]="savingTicketId !== undefined">
+        <option value="">Todos los técnicos</option><option value="unassigned">Sin asignar</option>
+        <option *ngFor="let technician of technicians" [value]="technician.key">{{ technician.name }}</option>
+        <option *ngIf="filters.technician && filters.technician !== 'unassigned' && !technicianAvailable(filters.technician)" [value]="filters.technician">Técnico seleccionado (sin tickets)</option>
+      </select>
+    </div>
+    <button type="button" class="staff-kanban-button staff-kanban-secondary" (click)="clearFilters()" [disabled]="!hasFilters || savingTicketId !== undefined"><mat-icon aria-hidden="true">filter_alt_off</mat-icon>Limpiar</button>
+  </form>
+
+  <div class="staff-kanban-summary">
+    <p aria-live="polite">{{ loading ? 'Actualizando tablero…' : loaded ? totalVisible + ' tickets en el tablero' : 'Tablero de tickets' }}<span *ngIf="hasFilters"> · Filtros aplicados</span></p>
+    <div><span><mat-icon aria-hidden="true">sync</mat-icon>Actualizaciones en tiempo real</span><button type="button" aria-label="Actualizar tablero" title="Actualizar tablero" (click)="cargarTickets()" [disabled]="loading || savingTicketId !== undefined"><mat-icon aria-hidden="true">refresh</mat-icon></button></div>
+  </div>
+  <div class="staff-kanban-notice staff-kanban-error" *ngIf="loadError" role="alert">{{ loadError }}<button type="button" (click)="cargarTickets()">Reintentar</button></div>
+  <p class="staff-kanban-notice staff-kanban-error" *ngIf="moveError" role="alert">{{ moveError }}</p>
+  <p class="staff-kanban-feedback" role="status" aria-live="polite">{{ savingTicketId !== undefined ? 'Guardando cambio de estado…' : moveMessage }}</p>
+
+  <div class="staff-kanban-board" [attr.aria-busy]="loading">
+    <section class="staff-kanban-column" *ngFor="let column of columns; trackBy: trackColumn" [attr.data-tone]="column.tone" [attr.aria-labelledby]="'heading-' + column.code">
+      <header class="staff-kanban-column-heading"><h2 [id]="'heading-' + column.code"><span class="staff-kanban-dot" aria-hidden="true"></span>{{ column.name }}<span class="staff-kanban-count">{{ column.total }}</span></h2></header>
+      <div class="staff-kanban-list" [id]="column.code" cdkDropList [cdkDropListData]="column.tickets" [cdkDropListConnectedTo]="column.connections" [cdkDropListDisabled]="interactionDisabled" (cdkDropListDropped)="drop($event)">
+        <article class="staff-kanban-card" *ngFor="let ticket of column.tickets; trackBy: trackTicket" cdkDrag [cdkDragDisabled]="interactionDisabled || (column.code === 'CERRADO' && !puedeReabrirCerrados)" (cdkDragStarted)="dragStarted()" (cdkDragEnded)="dragEnded()" [attr.data-saving]="savingTicketId === ticket.id">
+          <div class="staff-kanban-card-top">
+            <a class="staff-kanban-code" [routerLink]="detailRoute(ticket)" [queryParams]="{returnTo: boardRoute}">{{ ticket.codigo }}</a>
+            <span class="staff-kanban-priority" [attr.data-tone]="priorityTone(ticket.prioridadNombre)">{{ ticket.prioridadNombre }}</span>
+            <span class="staff-kanban-grip" cdkDragHandle *ngIf="column.code !== 'CERRADO' || puedeReabrirCerrados" title="Arrastra para cambiar el estado" aria-hidden="true"><mat-icon>drag_indicator</mat-icon></span>
+          </div>
+          <h3><a [routerLink]="detailRoute(ticket)" [queryParams]="{returnTo: boardRoute}">{{ ticket.titulo }}</a></h3>
+          <div class="staff-kanban-client"><span class="staff-kanban-avatar" aria-hidden="true">{{ initials(ticket.clienteNombre) }}</span><div><span>{{ ticket.clienteNombre || 'Sin información' }}</span><small>Cliente</small></div></div>
+          <footer class="staff-kanban-card-footer"><span><mat-icon aria-hidden="true">engineering</mat-icon>{{ ticket.tecnicoNombre || 'Sin asignar' }}</span><span class="staff-kanban-attachments" *ngIf="ticket.cantidadAdjuntos" [title]="ticket.cantidadAdjuntos + ' archivos adjuntos'"><mat-icon aria-hidden="true">attach_file</mat-icon>{{ ticket.cantidadAdjuntos }}</span><button type="button" [attr.aria-label]="'Ver detalle de ' + ticket.codigo" title="Ver detalle" (click)="abrirDetalle(ticket)"><mat-icon aria-hidden="true">visibility</mat-icon></button></footer>
+        </article>
+        <div class="staff-kanban-empty" *ngIf="!column.tickets.length && !loading && !loadError">
+          <mat-icon aria-hidden="true">{{ column.icon }}</mat-icon><h3>{{ hasFilters ? 'Sin coincidencias' : column.empty }}</h3>
+          <p>{{ hasFilters ? 'Prueba con otros filtros.' : 'Los tickets en este estado aparecerán aquí.' }}</p>
+          <small *ngIf="!hasFilters">Arrastra un ticket a esta columna</small>
+        </div>
+        <div class="staff-kanban-loading" *ngIf="loading && !loaded" role="status"><span></span>Cargando tickets…</div>
+        <p class="staff-kanban-notice staff-kanban-error" *ngIf="column.error" role="alert">{{ column.error }}</p>
+        <button class="staff-kanban-button staff-kanban-secondary" *ngIf="column.hasMore" type="button" (click)="loadMore(column.code)" [disabled]="column.loadingMore || loading">{{ column.loadingMore ? 'Cargando…' : 'Cargar más' }}</button>
+      </div>
+    </section>
+  </div>
+</section>

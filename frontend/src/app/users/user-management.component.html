@@ -1,0 +1,109 @@
+<section class="service-list-workspace users-workspace" aria-labelledby="users-title">
+  <header class="service-list-page-heading"><div><p class="service-list-eyebrow">Administración</p><h1 id="users-title">Usuarios</h1><p>Administra los usuarios y sus datos de acceso.</p></div><button type="button" class="service-list-button service-list-primary" (click)="openCreateModal()" [disabled]="busy"><mat-icon aria-hidden="true">person_add</mat-icon>Nuevo usuario</button></header>
+  <form class="service-list-filters users-filters" (ngSubmit)="buscarUsuarios()">
+    <div class="service-list-field service-list-search"><label for="users-search">Buscar usuario</label><div><mat-icon aria-hidden="true">search</mat-icon><input id="users-search" name="search" type="search" [(ngModel)]="busqueda" placeholder="Nombre, usuario o correo"></div></div>
+    <div class="service-list-field"><label for="users-role">Rol</label><select id="users-role" name="role" [(ngModel)]="rolFiltro"><option value="">Todos los roles</option><option *ngFor="let role of roleOptions" [value]="role.value">{{ role.label }}</option></select></div>
+    <div class="service-list-field"><label for="users-company">Empresa</label><select id="users-company" name="company" [(ngModel)]="empresaFiltro"><option value="">Todas las empresas</option><option *ngFor="let company of empresas" [value]="company.id">{{ company.razonSocial }}</option><option *ngIf="selectedCompanyMissing" [value]="empresaFiltro">Empresa seleccionada ({{ empresaFiltro }})</option></select></div>
+    <div class="service-list-field"><label for="users-status">Estado</label><select id="users-status" name="status" [(ngModel)]="estadoFiltro"><option value="">Todos los estados</option><option value="ACTIVO">Activos</option><option value="INACTIVO">Inactivos</option><option value="BLOQUEADO">Bloqueados</option></select></div>
+    <button type="button" class="service-list-button service-list-secondary" [disabled]="!hasFilters || loadingUsers" (click)="clearFilters()">Limpiar</button><button type="submit" class="service-list-button service-list-primary" [disabled]="loadingUsers"><mat-icon aria-hidden="true">search</mat-icon>Filtrar</button>
+  </form>
+  <p class="service-list-feedback service-list-success" role="status" *ngIf="successMessage">{{ successMessage }}</p>
+  <p class="service-list-feedback service-list-error" role="alert" *ngIf="errorMessage && !showModal">{{ errorMessage }}</p>
+  <p class="service-list-feedback service-list-error" role="alert" *ngIf="companiesError">{{ companiesError }} <button type="button" (click)="loadCompanies()" [disabled]="loadingCompanies">Reintentar empresas</button></p>
+  <section class="service-list-directory" [attr.aria-busy]="loadingUsers" aria-labelledby="users-directory-title">
+    <header class="service-list-results"><h2 id="users-directory-title">Directorio de usuarios</h2><span aria-live="polite">{{ loaded ? totalElements + (totalElements === 1 ? ' usuario' : ' usuarios') : (loadingUsers ? 'Cargando usuarios…' : 'Directorio no disponible') }}</span></header>
+    <div class="service-list-empty" *ngIf="loadingUsers" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><p>Cargando directorio de usuarios…</p></div>
+    <div class="service-list-empty" *ngIf="loadError" role="alert"><mat-icon aria-hidden="true">error_outline</mat-icon><h2>No se pudo cargar el directorio</h2><p>{{ loadError }}</p><button type="button" class="service-list-button service-list-secondary" (click)="loadUsers()">Reintentar usuarios</button></div>
+    <div class="service-list-table-scroll" *ngIf="loaded && usuarios.length" tabindex="0" role="region" aria-label="Directorio de usuarios, tabla desplazable">
+      <table class="service-list-table users-table"><caption class="service-list-sr-only">Usuarios que coinciden con los filtros aplicados.</caption><thead><tr><th scope="col">Usuario</th><th scope="col">Cargo</th><th scope="col">Empresa</th><th scope="col">Rol</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+        <tbody><tr *ngFor="let user of usuarios; trackBy: trackUser">
+          <td><div class="service-list-identity"><span class="users-avatar" aria-hidden="true">{{ initials(user) }}</span><div><strong>{{ fullName(user) }}</strong><small>{{ user.username }}</small></div></div></td><td>{{ user.cargo || 'Sin cargo' }}</td>
+          <td><div class="users-company"><mat-icon aria-hidden="true">business</mat-icon><span>{{ user.empresaNombre || 'Sin empresa' }}</span></div></td>
+          <td><div class="users-roles"><span class="users-role" [ngClass]="roleClass(role)" *ngFor="let role of user.roles"><mat-icon aria-hidden="true">{{ roleIcon(role) }}</mat-icon>{{ formatRole(role) }}</span><span *ngIf="!user.roles?.length">Sin rol</span></div></td>
+          <td><span class="users-status" [attr.data-status]="user.estado"><i aria-hidden="true"></i>{{ statusLabel(user.estado) }}</span></td>
+          <td><div class="users-actions"><button type="button" class="users-edit" [disabled]="busy" (click)="edit(user.id)" [attr.aria-label]="'Editar usuario ' + user.username"><mat-icon aria-hidden="true">edit</mat-icon>Editar</button><button type="button" class="users-toggle" [class.users-activate]="user.estado !== 'ACTIVO'" [disabled]="busy" (click)="toggleEstado(user)" [attr.aria-label]="(user.estado === 'ACTIVO' ? 'Desactivar usuario ' : 'Activar usuario ') + user.username"><mat-icon aria-hidden="true">{{ user.estado === 'ACTIVO' ? 'person_off' : 'person_add' }}</mat-icon>{{ user.estado === 'ACTIVO' ? 'Desactivar' : 'Activar' }}</button></div></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="service-list-empty" *ngIf="loaded && !usuarios.length"><mat-icon aria-hidden="true">person_search</mat-icon><h2>{{ hasFilters ? 'No hay usuarios con los filtros aplicados' : 'No hay usuarios registrados' }}</h2><p>{{ hasFilters ? 'Prueba con otra búsqueda, rol, empresa o estado.' : 'Crea un nuevo usuario para comenzar.' }}</p><button *ngIf="hasFilters" type="button" class="service-list-button service-list-secondary" (click)="clearFilters()">Limpiar filtros</button></div>
+    <footer class="service-list-pagination" *ngIf="loaded"><p>Mostrando <strong>{{ firstItemIndex }}–{{ lastItemIndex }}</strong> de <strong>{{ totalElements }}</strong></p><div class="service-list-pagination-controls"><label for="users-size">Filas</label><select id="users-size" [ngModel]="pageSize" (ngModelChange)="cambiarTamanoPagina($event)" [disabled]="loadingUsers"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select><nav class="service-list-pages" aria-label="Paginación de usuarios"><button type="button" aria-label="Página anterior" [disabled]="!pageIndex || loadingUsers" (click)="irAPagina(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button><button type="button" *ngFor="let page of visiblePages()" [class.selected]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" [disabled]="loadingUsers" (click)="irAPagina(page)">{{ page + 1 }}</button><button type="button" aria-label="Página siguiente" [disabled]="!totalPages || pageIndex >= totalPages - 1 || loadingUsers" (click)="irAPagina(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button></nav></div></footer>
+  </section>
+</section>
+
+<dialog #userEditor class="service-list-workspace users-editor" aria-labelledby="user-editor-title" (cancel)="$event.preventDefault(); closeModal()" (click)="closeOnBackdrop($event)">
+  <header class="users-editor-header">
+    <span class="users-editor-icon"><mat-icon aria-hidden="true">{{ editingId ? 'manage_accounts' : 'person_add' }}</mat-icon></span>
+    <div><p class="service-list-eyebrow">Directorio de usuarios</p><h2 id="user-editor-title">{{ editingId ? 'Editar usuario' : 'Nuevo usuario' }}</h2><p>{{ editingId ? 'Actualiza la información de la cuenta.' : 'Completa la información para crear la cuenta.' }}</p></div>
+    <button type="button" class="users-close" [disabled]="busy" aria-label="Cerrar formulario" (click)="closeModal()"><mat-icon aria-hidden="true">close</mat-icon></button>
+  </header>
+  <form [formGroup]="userForm" (ngSubmit)="save()" novalidate>
+    <div #userEditorBody class="users-editor-body">
+      <p role="status" *ngIf="loadingDetail">Cargando usuario…</p>
+      <p class="service-list-feedback service-list-error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</p>
+      <p class="service-list-feedback service-list-error" role="alert" *ngIf="companiesError">{{ companiesError }} <button type="button" (click)="loadCompanies()">Reintentar empresas</button></p>
+      <fieldset class="users-form-section">
+        <legend><span class="users-section-icon"><mat-icon aria-hidden="true">person</mat-icon></span>Datos personales</legend>
+        <div class="users-form-grid">
+          <div class="service-list-field">
+            <label for="user-first-name">Nombres *</label><input id="user-first-name" formControlName="nombres" maxlength="100" autocomplete="given-name" placeholder="Ej. Juan" [attr.aria-invalid]="fieldError('nombres') ? 'true' : null" aria-describedby="user-first-name-error">
+            <small id="user-first-name-error" class="users-field-error" *ngIf="fieldError('nombres')">{{ fieldError('nombres') }}</small>
+          </div>
+          <div class="service-list-field">
+            <label for="user-last-name">Apellidos *</label><input id="user-last-name" formControlName="apellidos" maxlength="100" autocomplete="family-name" placeholder="Ej. Pérez" [attr.aria-invalid]="fieldError('apellidos') ? 'true' : null" aria-describedby="user-last-name-error">
+            <small id="user-last-name-error" class="users-field-error" *ngIf="fieldError('apellidos')">{{ fieldError('apellidos') }}</small>
+          </div>
+          <div class="service-list-field">
+            <label for="user-email">Correo electrónico *</label><input id="user-email" formControlName="email" type="email" maxlength="100" autocomplete="email" placeholder="usuario@empresa.com" [attr.aria-invalid]="fieldError('email') ? 'true' : null" aria-describedby="user-email-error">
+            <small id="user-email-error" class="users-field-error" *ngIf="fieldError('email')">{{ fieldError('email') }}</small>
+          </div>
+          <div class="service-list-field">
+            <label for="user-phone">Teléfono (opcional)</label><input id="user-phone" formControlName="telefono" type="tel" maxlength="30" autocomplete="tel" placeholder="Ej. +51 999 999 999" [attr.aria-invalid]="fieldError('telefono') ? 'true' : null" aria-describedby="user-phone-error">
+            <small id="user-phone-error" class="users-field-error" *ngIf="fieldError('telefono')">{{ fieldError('telefono') }}</small>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="users-form-section">
+        <legend><span class="users-section-icon"><mat-icon aria-hidden="true">lock</mat-icon></span>Acceso al sistema</legend>
+        <div class="users-form-grid">
+          <div class="service-list-field">
+            <label for="user-username">Usuario *</label><input id="user-username" formControlName="username" maxlength="50" autocomplete="off" [readonly]="editingId !== null" placeholder="Ej. jperez" [attr.aria-invalid]="fieldError('username') ? 'true' : null" aria-describedby="user-username-hint">
+            <small id="user-username-hint" [class.users-field-error]="!!fieldError('username')">{{ fieldError('username') || (editingId ? 'El nombre de acceso no se modifica.' : 'Mínimo 3 caracteres.') }}</small>
+          </div>
+          <div class="service-list-field">
+            <label for="user-password">Contraseña {{ editingId ? '(opcional)' : '*' }}</label>
+            <div class="users-password-field"><input id="user-password" formControlName="password" [type]="showPassword ? 'text' : 'password'" autocomplete="new-password" [placeholder]="editingId ? 'Conservar contraseña actual' : 'Ingresa una contraseña'" [attr.aria-invalid]="fieldError('password') ? 'true' : null" aria-describedby="user-password-hint"><button type="button" class="users-password-toggle" aria-controls="user-password" [attr.aria-label]="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="showPassword" [disabled]="busy || userForm.get('password')?.disabled" (click)="togglePasswordVisibility()"><mat-icon aria-hidden="true">{{ showPassword ? 'visibility_off' : 'visibility' }}</mat-icon></button></div>
+            <small id="user-password-hint" [class.users-field-error]="!!fieldError('password')">{{ fieldError('password') || (editingId ? 'Déjala vacía para conservar la actual.' : 'Mínimo 8 caracteres.') }}</small>
+          </div>
+          <div class="service-list-field users-field-full">
+            <label for="user-role">Rol *</label><select id="user-role" formControlName="roles" [attr.aria-invalid]="fieldError('roles') ? 'true' : null" aria-describedby="user-role-hint"><option *ngFor="let role of roleOptions" [value]="role.value">{{ role.label }}</option></select>
+            <small id="user-role-hint" [class.users-field-error]="!!fieldError('roles')">{{ fieldError('roles') || ((usuarioEditando?.roles?.length || 0) > 1 ? 'Conserva el rol seleccionado para mantener las asignaciones actuales.' : 'Define el perfil de acceso del usuario.') }}</small>
+          </div>
+          <div class="service-list-field users-field-full" *ngIf="!editingId">
+            <label class="users-checkbox-label" for="user-require-password-change">
+              <input id="user-require-password-change" type="checkbox" formControlName="requiereCambioPassword">
+              Solicitar cambio de contraseña en el primer inicio de sesión
+            </label>
+            <small>Si se activa, el usuario deberá cambiarla antes de acceder a las demás secciones.</small>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="users-form-section">
+        <legend><span class="users-section-icon"><mat-icon aria-hidden="true">business</mat-icon></span>Organización</legend>
+        <div class="users-form-grid">
+          <div class="service-list-field">
+            <label for="user-company">Empresa *</label><select id="user-company" formControlName="empresaId" (change)="onEmpresaChange(userForm.get('empresaId')?.value)" [attr.aria-invalid]="fieldError('empresaId') ? 'true' : null" aria-describedby="user-company-error"><option [ngValue]="null">Selecciona una empresa</option><option *ngFor="let company of empresas" [ngValue]="company.id">{{ company.razonSocial }}</option></select>
+            <small id="user-company-error" class="users-field-error" *ngIf="fieldError('empresaId')">{{ fieldError('empresaId') }}</small>
+          </div>
+          <div class="service-list-field">
+            <label for="user-area">Área (opcional)</label><select id="user-area" formControlName="areaId" aria-describedby="user-area-hint"><option [ngValue]="null">{{ areaPlaceholder }}</option><option *ngFor="let area of areas" [ngValue]="area.id">{{ area.nombre }}</option><option *ngIf="originalAreaMissing" [ngValue]="usuarioEditando?.areaId">{{ usuarioEditando?.areaNombre || 'Área actual' }}</option></select>
+            <small id="user-area-hint" [class.users-field-error]="!!areasError" *ngIf="loadingAreas || areasError">{{ areasError || 'Cargando áreas…' }} <button type="button" *ngIf="areasError" (click)="loadAreas(userForm.get('empresaId')?.value)">Reintentar áreas</button></small>
+          </div>
+          <div class="service-list-field users-field-full">
+            <label for="user-job">Cargo (opcional)</label><input id="user-job" formControlName="cargo" maxlength="100" placeholder="Ej. Analista de sistemas" [attr.aria-invalid]="fieldError('cargo') ? 'true' : null" aria-describedby="user-job-error"><small id="user-job-error" class="users-field-error" *ngIf="fieldError('cargo')">{{ fieldError('cargo') }}</small>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+    <footer class="users-editor-footer"><small>* Campos obligatorios</small><button type="button" class="service-list-button service-list-secondary" (click)="closeModal()" [disabled]="busy">Cancelar</button><button type="submit" class="service-list-button service-list-primary" [disabled]="busy || loadingDetail || loadingCompanies || loadingAreas || !!companiesError || !!areasError || (!!editingId && !usuarioEditando)"><mat-icon aria-hidden="true">save</mat-icon>{{ saving ? 'Guardando...' : 'Guardar usuario' }}</button></footer>
+  </form>
+</dialog>

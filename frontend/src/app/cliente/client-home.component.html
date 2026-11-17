@@ -1,0 +1,68 @@
+<div class="client-home-workspace">
+  <section class="home-welcome" aria-labelledby="home-welcome-heading">
+    <div>
+      <p class="home-eyebrow">Portal del cliente</p>
+      <h1 id="home-welcome-heading">Hola, {{ currentUser?.fullName || 'bienvenido' }}</h1>
+      <p class="home-intro">Consulta tus solicitudes y mantente al día con la atención de tus casos.</p>
+    </div>
+    <a class="home-new-ticket" routerLink="/cliente/nuevo-ticket"><mat-icon>add</mat-icon>Nuevo ticket</a>
+  </section>
+
+  <section class="home-stats" aria-label="Resumen de mis tickets">
+    <article class="home-stat home-surface" [attr.aria-busy]="loadingRecent">
+      <span class="home-stat-icon home-icon-blue" aria-hidden="true"><mat-icon>confirmation_number</mat-icon></span>
+      <div><h2>Tickets generados</h2><strong>{{ loadingRecent ? '…' : totalTickets === null ? '—' : totalTickets }}</strong><p>Todas tus solicitudes</p></div>
+    </article>
+    <article class="home-stat home-surface" [attr.aria-busy]="loadingMetrics">
+      <span class="home-stat-icon home-icon-amber" aria-hidden="true"><mat-icon>schedule</mat-icon></span>
+      <div><h2>En atención</h2><strong>{{ loadingMetrics ? '…' : abiertos === null ? '—' : abiertos }}</strong><p>Pendientes de resolver</p></div>
+    </article>
+    <article class="home-stat home-surface" [attr.aria-busy]="loadingMetrics">
+      <span class="home-stat-icon home-icon-green" aria-hidden="true"><mat-icon>check_circle</mat-icon></span>
+      <div><h2>Resueltos</h2><strong>{{ loadingMetrics ? '…' : resueltos === null ? '—' : resueltos }}</strong><p>Casos atendidos</p></div>
+    </article>
+  </section>
+  <div class="home-summary-error" role="alert" *ngIf="metricsError"><mat-icon>info_outline</mat-icon><p>{{ metricsError }}</p><button type="button" (click)="refreshMetrics()">Reintentar resumen</button></div>
+
+  <div class="home-content-grid">
+    <section class="home-recent home-surface" aria-labelledby="home-recent-heading" [attr.aria-busy]="loadingRecent">
+      <header class="home-section-heading">
+        <span class="home-heading-icon" aria-hidden="true"><mat-icon>confirmation_number</mat-icon></span>
+        <div><h2 id="home-recent-heading">Últimos tickets</h2><p>Consulta el avance de tus solicitudes recientes.</p></div>
+        <a class="home-all-tickets" routerLink="/cliente/tickets">Ver todos<mat-icon>arrow_forward</mat-icon></a>
+      </header>
+      <div class="home-list-state" role="status" *ngIf="loadingRecent">
+        <mat-icon aria-hidden="true">hourglass_empty</mat-icon><p>Cargando tus tickets…</p>
+      </div>
+      <div class="home-list-state home-list-error" role="alert" *ngIf="!loadingRecent && recentError">
+        <mat-icon aria-hidden="true">error_outline</mat-icon><h3>No pudimos cargar tus tickets</h3><p>{{ recentError }}</p><button type="button" class="home-secondary-button" (click)="refreshMetrics()">Reintentar</button>
+      </div>
+      <ng-container *ngIf="!loadingRecent && !recentError">
+        <div class="home-recent-table-scroll" *ngIf="recentTickets.length; else firstTicket" role="region" aria-label="Tabla de tickets recientes" tabindex="0">
+          <table class="home-recent-table">
+            <thead><tr><th scope="col">Solicitud</th><th scope="col">Estado</th><th scope="col">Prioridad</th><th scope="col">Creado</th><th scope="col"><span class="home-visually-hidden">Ver detalle</span></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let ticket of recentTickets; trackBy: trackTicket">
+                <td><a class="home-ticket-title" [routerLink]="['/cliente/tickets', ticket.id]" [queryParams]="{ returnTo: '/cliente' }">{{ ticket.titulo }}</a><span class="home-ticket-code">{{ ticket.codigo }}</span></td>
+                <td><span class="home-badge" [attr.data-tone]="statusTone(ticket.estadoCodigo)"><i aria-hidden="true"></i>{{ ticket.estadoNombre }}</span></td>
+                <td><span class="home-badge" [attr.data-tone]="priorityTone(ticket.prioridadNombre)"><i aria-hidden="true"></i>{{ ticket.prioridadNombre }}</span></td>
+                <td><time [attr.datetime]="ticket.fechaCreacion">{{ formatDate(ticket.fechaCreacion) }}</time></td>
+                <td><a class="home-detail-link" [routerLink]="['/cliente/tickets', ticket.id]" [queryParams]="{ returnTo: '/cliente' }" [attr.aria-label]="'Ver detalle de ' + ticket.codigo"><mat-icon>chevron_right</mat-icon></a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="home-recent-footer" *ngIf="recentTickets.length">Mostrando {{ recentTickets.length === 1 ? 'tu ticket más reciente' : 'tus ' + recentTickets.length + ' tickets más recientes' }}</p>
+        <ng-template #firstTicket><div class="home-list-state"><mat-icon aria-hidden="true">confirmation_number</mat-icon><h3>Aún no tienes tickets</h3><p>Cuando crees una solicitud, podrás seguir su atención desde aquí.</p><a class="home-secondary-button" routerLink="/cliente/nuevo-ticket">Crear mi primer ticket<mat-icon>arrow_forward</mat-icon></a></div></ng-template>
+      </ng-container>
+    </section>
+    <aside class="home-side-column" aria-label="Accesos y recomendaciones">
+      <section class="home-shortcuts home-surface" aria-labelledby="home-shortcuts-heading">
+        <h2 id="home-shortcuts-heading">Accesos rápidos</h2>
+        <a class="home-shortcut" routerLink="/cliente/tickets"><span class="home-shortcut-icon home-icon-blue" aria-hidden="true"><mat-icon>confirmation_number</mat-icon></span><div><h3>Mis tickets</h3><p>Ver todas mis solicitudes</p></div><mat-icon>chevron_right</mat-icon></a>
+        <a class="home-shortcut" routerLink="/cliente/perfil"><span class="home-shortcut-icon home-icon-violet" aria-hidden="true"><mat-icon>person</mat-icon></span><div><h3>Mi perfil</h3><p>Actualizar mis datos</p></div><mat-icon>chevron_right</mat-icon></a>
+      </section>
+      <section class="home-tip" aria-labelledby="home-tip-heading"><span class="home-shortcut-icon home-icon-blue" aria-hidden="true"><mat-icon>lightbulb_outline</mat-icon></span><div><h2 id="home-tip-heading">Para una atención más rápida</h2><p>Describe el problema con claridad y adjunta una captura si es necesario.</p></div></section>
+    </aside>
+  </div>
+</div>

@@ -1,0 +1,71 @@
+<section class="audit-workspace" aria-labelledby="audit-heading">
+  <header class="audit-heading">
+    <div><p class="audit-eyebrow">Seguridad</p><h1 id="audit-heading">Auditoría y accesos</h1><p>Consulta los accesos y la actividad registrada en el sistema.</p></div>
+    <button class="audit-button secondary" type="button" (click)="loadPage(pageIndex)" [disabled]="loading"><mat-icon aria-hidden="true">refresh</mat-icon>Actualizar</button>
+  </header>
+
+  <div class="audit-layout" [class.has-detail]="selected">
+    <section class="audit-surface audit-directory" aria-label="Registro de auditoría" [attr.aria-busy]="loading">
+      <nav class="audit-tabs" aria-label="Filtrar grupo de eventos">
+        <button type="button" *ngFor="let tab of groups" [class.active]="group === tab.code" [attr.aria-pressed]="group === tab.code" (click)="setGroup(tab.code)" [disabled]="loading"><mat-icon aria-hidden="true">{{ tab.icon }}</mat-icon>{{ tab.label }}</button>
+      </nav>
+      <form class="audit-filters" (ngSubmit)="applyFilters()">
+        <div class="audit-field audit-search"><label for="audit-search">Buscar usuario, IP o evento</label><div class="search-input"><mat-icon aria-hidden="true">search</mat-icon><input id="audit-search" type="search" name="search" [(ngModel)]="filters.busqueda" placeholder="Nombre, IP o evento"></div></div>
+        <div class="audit-field"><label for="audit-action">Tipo de evento</label><select id="audit-action" name="action" [(ngModel)]="filters.accion"><option value="">Todos los tipos</option><option *ngFor="let action of actions" [value]="action.code">{{ action.label }}</option></select></div>
+        <div class="audit-field"><label for="audit-from">Desde</label><input id="audit-from" type="date" name="from" [(ngModel)]="filters.desde" [attr.aria-invalid]="!!filterError" [attr.aria-describedby]="filterError ? 'audit-filter-error' : null"></div>
+        <div class="audit-field"><label for="audit-to">Hasta</label><input id="audit-to" type="date" name="to" [(ngModel)]="filters.hasta" [attr.aria-invalid]="!!filterError" [attr.aria-describedby]="filterError ? 'audit-filter-error' : null"></div>
+        <div class="audit-filter-actions"><button class="audit-button primary" type="submit" [disabled]="loading"><mat-icon aria-hidden="true">filter_list</mat-icon>Filtrar</button><button class="audit-button text-button" type="button" (click)="clearFilters()" [disabled]="loading">Limpiar</button></div>
+        <p id="audit-filter-error" class="audit-filter-error" role="alert" *ngIf="filterError">{{ filterError }}</p>
+      </form>
+      <div class="audit-results">
+        <p aria-live="polite">{{ loading ? 'Consultando eventos…' : error ? 'Consulta no disponible' : (totalElements | number) + (totalElements === 1 ? ' evento' : ' eventos') }}</p>
+        <div class="audit-order"><label for="audit-order">Orden:</label><select id="audit-order" [(ngModel)]="order" (ngModelChange)="loadPage(0)" [disabled]="loading"><option value="desc">Más recientes</option><option value="asc">Más antiguos</option></select></div>
+      </div>
+      <div class="audit-list-state" role="status" *ngIf="loading"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><p>Cargando auditoría…</p></div>
+      <div class="audit-list-state error-state" role="alert" *ngIf="!loading && error"><mat-icon aria-hidden="true">error_outline</mat-icon><h2>No pudimos cargar los eventos</h2><p>{{ error }}</p><button class="audit-button secondary" type="button" (click)="loadPage(pageIndex)">Reintentar</button></div>
+      <ng-container *ngIf="!loading && !error">
+        <div class="audit-table-scroll" *ngIf="entries.length" tabindex="0" role="region" aria-label="Tabla de eventos; desplázate horizontalmente en pantallas pequeñas">
+          <table class="audit-table"><thead><tr><th scope="col">Evento</th><th scope="col">Usuario</th><th scope="col">Origen</th><th scope="col">Fecha y hora</th><th scope="col"><span class="audit-sr-only">Detalle</span></th></tr></thead>
+            <tbody><tr *ngFor="let entry of entries; trackBy: trackEntry" [class.selected]="selected?.id === entry.id">
+              <td><div class="audit-event"><span class="event-icon" [class.success]="isSuccess(entry)" [class.danger]="isError(entry)"><mat-icon aria-hidden="true">{{ icon(entry) }}</mat-icon></span><div class="event-copy"><div class="event-title"><button type="button" class="event-open" [id]="'audit-event-' + entry.id" (click)="openDetail(entry)" [attr.aria-expanded]="selected?.id === entry.id" aria-controls="audit-detail">{{ title(entry) }}</button><span class="audit-badge success" *ngIf="isSuccess(entry)">Exitoso</span><span class="audit-badge danger" *ngIf="isError(entry)">Fallido</span></div><small [title]="subtitle(entry)">{{ subtitle(entry) }}</small></div></div></td>
+              <td><div class="audit-user"><span class="user-avatar" [class.unknown]="!initials(entry.usuarioNombre)"><ng-container *ngIf="initials(entry.usuarioNombre); else unknownUser">{{ initials(entry.usuarioNombre) }}</ng-container><ng-template #unknownUser><mat-icon aria-hidden="true">person</mat-icon></ng-template></span><span>{{ entry.usuarioNombre || 'No identificado' }}</span></div></td>
+              <td class="origin-cell"><strong>{{ entry.ipOrigen || 'No disponible' }}</strong><small>{{ browser(entry.userAgent) }} · {{ os(entry.userAgent) }}</small></td>
+              <td class="date-cell"><span>{{ date(entry.fechaRegistro) }}</span><small>{{ time(entry.fechaRegistro) }}</small></td>
+              <td><button class="audit-icon-button" type="button" (click)="openDetail(entry)" [attr.aria-label]="'Ver detalle del evento ' + entry.id" [attr.aria-expanded]="selected?.id === entry.id" aria-controls="audit-detail"><mat-icon aria-hidden="true">chevron_right</mat-icon></button></td>
+            </tr></tbody>
+          </table>
+        </div>
+        <div class="audit-list-state" *ngIf="!entries.length"><mat-icon aria-hidden="true">manage_search</mat-icon><h2>{{ hasFilters ? 'No hay eventos con estos filtros' : 'No hay eventos registrados' }}</h2><p>{{ hasFilters ? 'Prueba con otra búsqueda o un rango de fechas diferente.' : 'La actividad del sistema aparecerá aquí.' }}</p><button *ngIf="hasFilters" class="audit-button secondary" type="button" (click)="group = ''; clearFilters()">Limpiar filtros</button></div>
+        <footer class="audit-pagination" *ngIf="totalElements > 0">
+          <p>Mostrando <strong>{{ firstItem }}–{{ lastItem }}</strong> de {{ totalElements | number }}</p>
+          <div class="pagination-controls"><label for="audit-size">Filas:</label><select id="audit-size" [ngModel]="pageSize" (ngModelChange)="changeSize($event)"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select>
+            <nav class="audit-pager" aria-label="Páginas de auditoría">
+              <button class="audit-icon-button" type="button" aria-label="Página anterior" [disabled]="pageIndex === 0" (click)="goTo(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
+              <ng-container *ngIf="visiblePages()[0] > 0"><button type="button" aria-label="Página 1" (click)="goTo(0)">1</button><span *ngIf="visiblePages()[0] > 1" aria-hidden="true">…</span></ng-container>
+              <button type="button" *ngFor="let page of visiblePages()" [class.active]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" (click)="goTo(page)">{{ page + 1 }}</button>
+              <ng-container *ngIf="visiblePages()[visiblePages().length - 1] < totalPages - 1"><span *ngIf="visiblePages()[visiblePages().length - 1] < totalPages - 2" aria-hidden="true">…</span><button type="button" [attr.aria-label]="'Página ' + totalPages" (click)="goTo(totalPages - 1)">{{ totalPages }}</button></ng-container>
+              <button class="audit-icon-button" type="button" aria-label="Página siguiente" [disabled]="pageIndex >= totalPages - 1" (click)="goTo(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+            </nav>
+          </div>
+        </footer>
+      </ng-container>
+      <p class="audit-timezone">Fechas y horas de Lima (UTC−5).</p>
+    </section>
+
+    <aside class="audit-surface audit-detail" id="audit-detail" tabindex="-1" *ngIf="selected as entry" aria-labelledby="audit-detail-heading" (keydown.escape)="closeDetail()">
+      <header class="detail-heading"><h2 id="audit-detail-heading">Detalle del evento</h2><button class="audit-icon-button" type="button" aria-label="Cerrar detalle del evento" (click)="closeDetail()"><mat-icon aria-hidden="true">close</mat-icon></button></header>
+      <div class="detail-event"><span class="event-icon" [class.success]="isSuccess(entry)" [class.danger]="isError(entry)"><mat-icon aria-hidden="true">{{ icon(entry) }}</mat-icon></span><span class="audit-badge success" *ngIf="isSuccess(entry)">Exitoso</span><span class="audit-badge danger" *ngIf="isError(entry)">Fallido</span><span class="audit-badge" *ngIf="!isSuccess(entry) && !isError(entry)">Actividad registrada</span></div>
+      <h3>{{ title(entry) }}</h3><p class="detail-module">{{ entry.modulo === 'AUTENTICACION' ? 'Autenticación' : entry.modulo }}</p>
+      <dl class="audit-details">
+        <div><dt>Usuario</dt><dd>{{ entry.usuarioNombre || 'No identificado' }}</dd></div>
+        <div><dt>Fecha</dt><dd>{{ date(entry.fechaRegistro) }} · {{ time(entry.fechaRegistro) }}</dd></div>
+        <div><dt>Dirección IP</dt><dd>{{ entry.ipOrigen || 'No disponible' }}</dd></div>
+        <div><dt>Navegador</dt><dd>{{ browser(entry.userAgent) }}</dd></div>
+        <div><dt>Sistema operativo</dt><dd>{{ os(entry.userAgent) }}</dd></div>
+        <div><dt>Evento original</dt><dd><code>{{ entry.accion }}</code></dd></div>
+        <div><dt>Descripción</dt><dd>{{ entry.detalle || 'Sin detalle' }}</dd></div>
+      </dl>
+      <details class="audit-technical"><summary>Ver datos técnicos</summary><dl><dt>ID del evento</dt><dd>{{ entry.id }}</dd><dt>Módulo original</dt><dd>{{ entry.modulo }}</dd><dt>User-Agent registrado</dt><dd class="user-agent">{{ entry.userAgent || 'No disponible' }}</dd></dl></details>
+    </aside>
+  </div>
+</section>

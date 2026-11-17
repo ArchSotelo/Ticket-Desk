@@ -1,0 +1,112 @@
+<section class="support-dashboard" aria-labelledby="dashboard-heading">
+  <header class="db-heading">
+    <div><p class="db-eyebrow">Panel principal</p><h1 id="dashboard-heading">Dashboard de soporte</h1><p>Resumen de tickets y rendimiento del servicio.</p></div>
+    <div class="db-header-actions">
+      <div class="db-period"><mat-icon aria-hidden="true">date_range</mat-icon><label class="db-sr-only" for="dashboard-period">Periodo del dashboard</label><select id="dashboard-period" name="period" [ngModel]="selectedPeriod" (ngModelChange)="selectPeriod($event)"><option *ngFor="let period of periods" [value]="period.value">{{ period.label }}</option></select></div>
+      <button class="db-icon-button db-refresh" type="button" (click)="refresh()" [disabled]="refreshing" aria-label="Actualizar dashboard" title="Actualizar dashboard"><mat-icon aria-hidden="true" [class.db-spinning]="refreshing">refresh</mat-icon></button>
+      <a class="db-primary-button" [routerLink]="listRoute">Ver tickets<mat-icon aria-hidden="true">arrow_forward</mat-icon></a>
+    </div>
+  </header>
+  <form class="db-period-form" *ngIf="selectedPeriod === 'custom'" (ngSubmit)="applyCustomPeriod()" novalidate>
+    <div><label for="dashboard-from">Desde</label><input id="dashboard-from" name="from" type="date" min="1000-01-01" max="9999-12-31" [(ngModel)]="dateFrom" [attr.aria-invalid]="periodError ? 'true' : null" aria-describedby="dashboard-period-error"></div>
+    <div><label for="dashboard-to">Hasta</label><input id="dashboard-to" name="to" type="date" min="1000-01-01" max="9999-12-31" [(ngModel)]="dateTo" [attr.aria-invalid]="periodError ? 'true' : null" aria-describedby="dashboard-period-error"></div>
+    <button type="submit" class="db-primary-button"><mat-icon aria-hidden="true">filter_alt</mat-icon>Aplicar periodo</button>
+    <p id="dashboard-period-error" class="db-period-error" role="alert" *ngIf="periodError">{{ periodError }}</p>
+  </form>
+  <p class="db-period-applied"><strong>{{ appliedPeriodLabel }}</strong><span> · Filtrado por fecha de creación. Las resoluciones de la tendencia pertenecen a estos tickets y al intervalo indicado.</span></p>
+  <div class="db-load-status" role="status" aria-live="polite">{{ refreshing ? 'Actualizando dashboard…' : updatedAt ? 'Métricas actualizadas a las ' + updatedTime : '' }}</div>
+  <div *ngIf="metricsError" class="db-notice" role="alert">{{ metricsError }}<button type="button" (click)="reloadMetrics()" [disabled]="loadingMetrics">Reintentar métricas</button></div>
+
+  <div class="db-kpis" [attr.aria-busy]="loadingMetrics">
+    <article class="db-kpi" *ngFor="let metric of metrics" [attr.data-tone]="metric.tone">
+      <span class="db-kpi-icon" aria-hidden="true"><mat-icon>{{ metric.icon }}</mat-icon></span>
+      <div><h2>{{ metric.label }}</h2><strong>{{ metric.value }}</strong></div>
+    </article>
+  </div>
+
+  <div class="db-chart-grid" cdkDropList cdkDropListOrientation="mixed" [cdkDropListData]="chartOrder" (cdkDropListDropped)="onChartDrop($event)" aria-label="Paneles del dashboard">
+    <article class="db-panel" *ngFor="let chartId of chartOrder; let index = index; trackBy: trackChart" [attr.data-panel]="chartId" cdkDrag [cdkDragPreviewContainer]="'parent'" [attr.aria-labelledby]="'db-panel-' + chartId">
+      <header class="db-panel-heading">
+        <div><h2 [id]="'db-panel-' + chartId">{{ chartTitles[chartId] }}</h2><p>{{ chartDescription(chartId) }}</p></div>
+        <div class="db-panel-tools">
+          <button type="button" class="db-icon-button db-order-button" [disabled]="index === 0" (click)="moveChart(index, index - 1)" [attr.aria-label]="'Mover ' + chartTitles[chartId] + ' antes'" title="Mover panel antes"><mat-icon aria-hidden="true">keyboard_arrow_up</mat-icon></button>
+          <button type="button" class="db-icon-button db-order-button" [disabled]="index === chartOrder.length - 1" (click)="moveChart(index, index + 1)" [attr.aria-label]="'Mover ' + chartTitles[chartId] + ' después'" title="Mover panel después"><mat-icon aria-hidden="true">keyboard_arrow_down</mat-icon></button>
+          <span class="db-panel-grip" cdkDragHandle title="Arrastra para reordenar los paneles" aria-hidden="true"><mat-icon>drag_indicator</mat-icon></span>
+        </div>
+      </header>
+
+      <ng-container *ngIf="stats; else metricsPlaceholder" [ngSwitch]="chartId">
+        <ng-container *ngSwitchCase="'tendencia'">
+          <div *ngIf="trendAvailable; else noTrend" class="db-trend">
+            <div class="db-trend-legend"><span><i class="db-dot db-created"></i>Creados <strong>{{ trendTotal(trendCreated) }}</strong></span><span><i class="db-dot db-resolved"></i>Resueltos <strong>{{ trendTotal(trendResolved) }}</strong></span></div>
+            <div class="db-trend-plot" role="img" [attr.aria-label]="chartDescription('tendencia') + ' ' + trendTotal(trendCreated) + ' tickets creados y ' + trendTotal(trendResolved) + ' resueltos. Consulta los datos debajo.'">
+              <div class="db-trend-y"><span *ngFor="let tick of trendTicks">{{ tick.value }}</span></div>
+              <svg viewBox="0 0 700 205" preserveAspectRatio="none" aria-hidden="true">
+                <line *ngFor="let tick of trendTicks" x1="20" x2="680" [attr.y1]="tick.y" [attr.y2]="tick.y" class="db-grid-line"></line>
+                <polyline [attr.points]="linePoints(trendCreated)" class="db-line db-created-line"></polyline>
+                <polyline [attr.points]="linePoints(trendResolved)" class="db-line db-resolved-line"></polyline>
+                <circle *ngFor="let point of trendCreated" [attr.cx]="point.x" [attr.cy]="point.y" r="3.5" class="db-created-point"><title>{{ point.date }} · Creados: {{ point.value }}</title></circle>
+                <circle *ngFor="let point of trendResolved" [attr.cx]="point.x" [attr.cy]="point.y" r="3" class="db-resolved-point"><title>{{ point.date }} · Resueltos: {{ point.value }}</title></circle>
+              </svg>
+              <div class="db-trend-x" [style.grid-template-columns]="'repeat(' + trendDates.length + ', minmax(0, 1fr))'"><span *ngFor="let date of trendDates">{{ date }}</span></div>
+            </div>
+            <details class="db-trend-data"><summary>Ver datos de la tendencia</summary><div class="db-table-scroll"><table><caption class="db-sr-only">Creados y resueltos por fecha</caption><thead><tr><th>Fecha</th><th>Creados</th><th>Resueltos</th></tr></thead><tbody><tr *ngFor="let point of trendCreated; let day = index"><th scope="row">{{ point.date }}</th><td>{{ point.value }}</td><td>{{ trendResolved[day].value }}</td></tr></tbody></table></div></details>
+          </div>
+          <ng-template #noTrend><div class="db-empty"><mat-icon aria-hidden="true">show_chart</mat-icon><p>La tendencia no está disponible.</p><small>El sistema no devolvió una serie completa para este periodo.</small></div></ng-template>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'estado'">
+          <div class="db-donut-layout" *ngIf="stateEntries.length; else noBreakdown">
+            <div class="db-donut" [style.background]="stateBackground" role="img" [attr.aria-label]="stateTotal + ' tickets distribuidos por estado. Valores en la leyenda.'"><div class="db-donut-center"><strong>{{ formatCount(stateTotal) }}</strong><span>Tickets</span></div></div>
+            <ul class="db-legend"><li *ngFor="let entry of stateEntries; trackBy: trackEntry"><span><i class="db-dot" [style.background]="entry.color"></i>{{ entry.name }}</span><strong>{{ formatCount(entry.value) }}</strong></li></ul>
+          </div>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'categoria'">
+          <ul class="db-bars db-category-bars" *ngIf="categoryEntries.length; else noBreakdown" aria-label="Cantidad de tickets por categoría">
+            <li *ngFor="let entry of categoryEntries; trackBy: trackEntry"><span class="db-bar-name">{{ entry.name }}</span><span class="db-bar-track" aria-hidden="true"><i [style.width.%]="barWidth(entry.value, categoryMax)" [style.background]="entry.color"></i></span><strong>{{ formatCount(entry.value) }}</strong></li>
+          </ul>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'prioridad'">
+          <ul class="db-bars" *ngIf="priorityEntries.length; else noBreakdown" aria-label="Cantidad de tickets por prioridad">
+            <li *ngFor="let entry of priorityEntries; trackBy: trackEntry"><span class="db-bar-name">{{ entry.name }}</span><span class="db-bar-track" aria-hidden="true"><i [style.width.%]="barWidth(entry.value, priorityMax)" [style.background]="entry.color"></i></span><strong>{{ formatCount(entry.value) }}</strong></li>
+          </ul>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'sla'">
+          <div class="db-donut-layout db-sla-layout" *ngIf="slaEntries.length; else noBreakdown">
+            <div class="db-donut" [style.background]="slaBackground" role="img" [attr.aria-label]="'Distribución de ' + slaTotal + ' tickets por resultado de SLA. Valores en la leyenda.'"><div class="db-donut-center"><strong>{{ formatPercent(slaPercent) }}</strong><span>Cumplidos del total</span></div></div>
+            <ul class="db-legend"><li *ngFor="let entry of slaEntries; trackBy: trackEntry"><span><i class="db-dot" [style.background]="entry.color"></i>{{ entry.name }}</span><strong>{{ formatCount(entry.value) }}</strong></li><li class="db-legend-total"><span>Total</span><strong>{{ formatCount(slaTotal) }}</strong></li></ul>
+          </div>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'tecnico'">
+          <div class="db-table-scroll db-technicians" *ngIf="technicianEntries.length; else noBreakdown">
+            <table><caption class="db-sr-only">Tickets asignados por técnico en todo el historial</caption><thead><tr><th scope="col">Técnico</th><th scope="col">Tickets asignados</th><th scope="col">Participación</th></tr></thead><tbody><tr *ngFor="let entry of technicianEntries; trackBy: trackEntry"><td><span class="db-person"><span class="db-avatar db-avatar-purple" aria-hidden="true">{{ initials(entry.name) }}</span>{{ entry.name }}</span></td><td>{{ formatCount(entry.value) }}</td><td><span class="db-participation"><span class="db-bar-track" aria-hidden="true"><i [style.width.%]="barWidth(entry.value, technicianTotal)"></i></span>{{ barWidth(entry.value, technicianTotal) | number:'1.0-1' }}%</span></td></tr></tbody></table>
+          </div>
+        </ng-container>
+      </ng-container>
+    </article>
+  </div>
+
+  <section class="db-panel db-latest" aria-labelledby="db-latest-heading" [attr.aria-busy]="loadingLatest">
+    <header class="db-panel-heading"><div><h2 id="db-latest-heading">Últimos tickets creados</h2><p>Consulta los cinco casos más recientes del periodo aplicado.</p></div><a class="db-text-link" [routerLink]="listRoute">Ver todos<mat-icon aria-hidden="true">arrow_forward</mat-icon></a></header>
+    <div class="db-notice" *ngIf="latestError" role="alert">{{ latestError }}<button type="button" (click)="reloadLatest()" [disabled]="loadingLatest">Reintentar tickets</button></div>
+    <div class="db-table-scroll" *ngIf="latestTickets.length; else noLatest">
+      <table class="db-ticket-table"><caption class="db-sr-only">Cinco tickets más recientes ordenados por fecha de creación</caption><thead><tr><th scope="col">Ticket</th><th scope="col">Solicitante</th><th scope="col">Prioridad</th><th scope="col">Estado</th><th scope="col">Creado</th><th scope="col">Acciones</th></tr></thead>
+        <tbody><tr *ngFor="let ticket of latestTickets; trackBy: trackTicket">
+          <td><a class="db-ticket-title" [routerLink]="detailRoute(ticket)" [queryParams]="{ returnTo: dashboardRoute }">{{ ticket.titulo }}</a><a class="db-ticket-code" [routerLink]="detailRoute(ticket)" [queryParams]="{ returnTo: dashboardRoute }">{{ ticket.codigo }}</a></td>
+          <td><span class="db-person"><span class="db-avatar" aria-hidden="true">{{ initials(ticket.clienteNombre) }}</span>{{ ticket.clienteNombre || 'Sin información' }}</span></td>
+          <td><span class="db-pill" [attr.data-tone]="priorityTone(ticket.prioridadNombre)">{{ ticket.prioridadNombre }}</span></td>
+          <td><span class="db-pill" [attr.data-tone]="stateTone(ticket.estadoCodigo)">{{ ticket.estadoNombre }}</span></td>
+          <td><time [attr.datetime]="ticket.fechaCreacion">{{ formatDate(ticket.fechaCreacion) }}</time></td>
+          <td><a class="db-icon-button db-detail-link" [routerLink]="detailRoute(ticket)" [queryParams]="{ returnTo: dashboardRoute }" [attr.aria-label]="'Ver detalle de ' + ticket.codigo" title="Ver detalle"><mat-icon aria-hidden="true">visibility</mat-icon></a></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <ng-template #noLatest><div class="db-empty" *ngIf="!latestError"><mat-icon aria-hidden="true">{{ loadingLatest ? 'hourglass_top' : 'confirmation_number' }}</mat-icon><p>{{ loadingLatest ? 'Cargando tickets recientes…' : 'No hay tickets en el periodo seleccionado.' }}</p></div></ng-template>
+  </section>
+  <ng-template #metricsPlaceholder><div class="db-empty"><mat-icon aria-hidden="true">{{ loadingMetrics ? 'hourglass_top' : 'insert_chart_outlined' }}</mat-icon><p>{{ loadingMetrics ? 'Cargando métricas…' : 'Métricas no disponibles.' }}</p></div></ng-template>
+  <ng-template #noBreakdown><div class="db-empty"><mat-icon aria-hidden="true">insert_chart_outlined</mat-icon><p>Sin datos para este desglose.</p><small>Se muestran únicamente los datos enviados por el sistema.</small></div></ng-template>
+</section>

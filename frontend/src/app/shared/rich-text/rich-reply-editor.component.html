@@ -1,0 +1,20 @@
+<div class="reply-rich-editor" [class.disabled]="disabled">
+  <div class="reply-format-toolbar" role="toolbar" aria-label="Formato del mensaje">
+    <button type="button" title="Negrita" aria-label="Negrita" [attr.aria-pressed]="bold" [disabled]="disabled" (mousedown)="$event.preventDefault()" (click)="format('bold')"><strong>B</strong></button>
+    <button type="button" title="Cursiva" aria-label="Cursiva" [attr.aria-pressed]="italic" [disabled]="disabled" (mousedown)="$event.preventDefault()" (click)="format('italic')"><em>I</em></button>
+    <span class="reply-toolbar-divider" aria-hidden="true"></span>
+    <button type="button" class="reply-title-button" title="Título" aria-label="Título" [attr.aria-pressed]="heading" [disabled]="disabled" (mousedown)="$event.preventDefault()" (click)="title()">Título</button>
+    <button type="button" title="Texto normal" aria-label="Texto normal" [disabled]="disabled" (mousedown)="$event.preventDefault()" (click)="format('formatBlock', 'p')"><mat-icon>format_align_left</mat-icon></button>
+    <span class="reply-toolbar-divider" aria-hidden="true"></span>
+    <button type="button" title="Lista numerada" aria-label="Lista numerada" [disabled]="disabled" (mousedown)="$event.preventDefault()" (click)="format('insertOrderedList')"><mat-icon>format_list_numbered</mat-icon></button>
+    <button type="button" title="Lista con viñetas" aria-label="Lista con viñetas" [disabled]="disabled" (mousedown)="$event.preventDefault()" (click)="format('insertUnorderedList')"><mat-icon>format_list_bulleted</mat-icon></button>
+    <span class="reply-toolbar-divider" aria-hidden="true"></span>
+    <button type="button" title="Insertar enlace" aria-label="Insertar enlace" [attr.aria-expanded]="linkOpen" [disabled]="disabled" (mousedown)="$event.preventDefault()" (click)="openLink()"><mat-icon>link</mat-icon></button>
+  </div>
+  <div class="reply-link-panel" *ngIf="linkOpen">
+    <label [for]="editorId + '-link'">Dirección del enlace</label>
+    <div><input #linkInput [id]="editorId + '-link'" type="url" [(ngModel)]="linkUrl" [ngModelOptions]="{standalone: true}" placeholder="https://ejemplo.com" [disabled]="disabled" (keydown.enter)="$event.preventDefault(); applyLink()" (keydown.escape)="$event.preventDefault(); cancelLink()"><button type="button" (click)="applyLink()" [disabled]="disabled">Insertar</button><button type="button" (click)="cancelLink()">Cancelar</button></div>
+    <p role="alert" *ngIf="linkError">{{ linkError }}</p>
+  </div>
+  <div #editor class="reply-editor-content" [class.is-empty]="empty" [id]="editorId" role="textbox" aria-multiline="true" [attr.aria-label]="label" [attr.aria-describedby]="describedBy || null" [attr.aria-disabled]="disabled" [attr.contenteditable]="disabled ? 'false' : 'true'" [attr.data-placeholder]="placeholder" [innerHTML]="editorHtml" (input)="onInput()" (keyup)="rememberSelection()" (mouseup)="rememberSelection()" (paste)="paste($event)" (drop)="$event.preventDefault()"></div>
+</div>

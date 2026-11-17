@@ -1,0 +1,127 @@
+<section class="subcategory-workspace" aria-labelledby="subcategory-heading">
+  <header class="subcategory-page-heading">
+    <div><p class="subcategory-eyebrow">Administración</p><h1 id="subcategory-heading">Subcategorías</h1><p>Organiza las subcategorías asociadas a cada categoría.</p></div>
+    <button class="subcategory-button subcategory-primary" type="button" (click)="openModal()" [disabled]="busy"><mat-icon aria-hidden="true">add</mat-icon>Nueva subcategoría</button>
+  </header>
+  <p class="subcategory-feedback subcategory-success" *ngIf="successMessage" role="status">{{ successMessage }}</p>
+  <p class="subcategory-feedback subcategory-error" *ngIf="errorMessage && !showModal" role="alert">{{ errorMessage }}</p>
+
+  <div class="subcategory-feedback subcategory-error" *ngIf="categoriesError && !showModal" role="alert">{{ categoriesError }}<button type="button" (click)="loadCategories()" [disabled]="loadingCategories">Reintentar categorías</button></div>
+
+    <form class="subcategory-filters" (submit)="$event.preventDefault(); applyFilters()" aria-label="Filtros de subcategorías">
+      <div class="subcategory-field subcategory-search">
+        <label for="subcategory-search">Buscar subcategoría</label>
+        <div><mat-icon aria-hidden="true">search</mat-icon><input id="subcategory-search" name="search" type="search" placeholder="Nombre o descripción" [(ngModel)]="search" (ngModelChange)="applyFilters()"></div>
+      </div>
+      <div class="subcategory-field">
+        <label for="subcategory-category">Categoría</label>
+        <select id="subcategory-category" name="categoryFilter" [(ngModel)]="categoryFilter" (ngModelChange)="applyFilters()">
+          <option value="">Todas las categorías</option>
+          <option *ngFor="let category of filterCategories; trackBy: trackCategory" [value]="category.id">{{ category.name }}</option>
+          <option *ngIf="categoryFilter && !selectedCategoryExists" [value]="categoryFilter">Categoría seleccionada (sin subcategorías)</option>
+        </select>
+      </div>
+      <div class="subcategory-field">
+        <label for="subcategory-status">Estado</label>
+        <select id="subcategory-status" name="status" [(ngModel)]="status" (ngModelChange)="applyFilters()"><option value="">Todos los estados</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select>
+      </div>
+      <button type="button" class="subcategory-button subcategory-secondary" (click)="clearFilters()" [disabled]="!hasFilters"><mat-icon aria-hidden="true">restart_alt</mat-icon>Limpiar</button>
+    </form>
+  <section class="subcategory-directory" aria-label="Directorio de subcategorías">
+    <div class="subcategory-results">
+      <div><h2>Directorio de subcategorías</h2><p aria-live="polite">{{ loading ? 'Cargando subcategorías…' : loaded ? totalElements + (totalElements === 1 ? ' subcategoría encontrada' : ' subcategorías encontradas') : 'Directorio de subcategorías' }}</p></div>
+    </div>
+    <div class="subcategory-feedback subcategory-error subcategory-load-error" *ngIf="loadError" role="alert">{{ loadError }}<button type="button" (click)="load()" [disabled]="loading">Reintentar</button></div>
+    <div class="subcategory-table-scroll" [attr.aria-busy]="loading">
+      <table class="subcategory-table"><caption class="subcategory-sr-only">Subcategorías registradas, su categoría, descripción y estado</caption>
+        <thead><tr><th scope="col">Subcategoría</th><th scope="col">Categoría</th><th scope="col">Descripción</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let item of subcategorias; trackBy: trackSubcategory">
+            <td><span class="subcategory-identity"><span class="subcategory-avatar" aria-hidden="true"><mat-icon>label_outline</mat-icon></span><strong>{{ item.nombre }}</strong></span></td>
+            <td><span class="subcategory-category-chip">{{ item.categoriaNombre || 'Categoría #' + item.categoriaId }}</span></td>
+            <td class="subcategory-description-cell">{{ item.descripcion || 'Sin descripción' }}</td>
+            <td><span class="subcategory-status-pill" [class.subcategory-inactive]="!item.activa"><i aria-hidden="true"></i>{{ item.activa ? 'Activa' : 'Inactiva' }}</span></td>
+            <td><div class="subcategory-row-actions">
+              <button type="button" class="subcategory-edit-button" (click)="edit(item)" [disabled]="busy || loading || !!loadError" [attr.aria-label]="'Editar subcategoría ' + item.nombre"><mat-icon aria-hidden="true">edit</mat-icon>Editar</button>
+              <button type="button" class="subcategory-delete-button" (click)="remove(item)" [disabled]="busy || loading || !!loadError || !item.activa" [attr.aria-label]="'Eliminar subcategoría ' + item.nombre" [title]="item.activa ? 'Eliminar subcategoría (desactivar)' : 'La subcategoría ya está inactiva'"><mat-icon aria-hidden="true">{{ deletingId === item.id ? 'hourglass_top' : 'delete_outline' }}</mat-icon></button>
+            </div></td>
+          </tr>
+          <tr *ngIf="!subcategorias.length"><td colspan="5"><div class="subcategory-empty">
+            <mat-icon aria-hidden="true">{{ loading ? 'hourglass_top' : loadError ? 'cloud_off' : 'label_outline' }}</mat-icon>
+            <h2>{{ loading ? 'Cargando directorio…' : loadError ? 'El directorio no está disponible' : hasFilters ? 'No encontramos subcategorías con estos filtros' : 'Todavía no hay subcategorías registradas' }}</h2>
+            <p *ngIf="!loading && !loadError">{{ hasFilters ? 'Prueba con otro nombre, categoría o estado.' : 'Crea la primera subcategoría para organizar las solicitudes.' }}</p>
+            <button *ngIf="hasFilters && !loading && !loadError" type="button" class="subcategory-button subcategory-secondary" (click)="clearFilters()">Limpiar filtros</button>
+          </div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="subcategory-pagination">
+      <p>Mostrando <strong>{{ firstItemIndex }}–{{ lastItemIndex }}</strong> de {{ totalElements }}</p>
+      <div class="subcategory-pagination-controls">
+        <label for="subcategory-page-size">Filas</label><select id="subcategory-page-size" name="pageSize" [ngModel]="pageSize" (ngModelChange)="cambiarTamanoPagina($event)" [disabled]="loading"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select>
+        <nav class="subcategory-pages" aria-label="Paginación de subcategorías">
+          <button type="button" class="subcategory-page-icon" aria-label="Página anterior" [disabled]="pageIndex === 0 || loading" (click)="irAPagina(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
+          <button type="button" class="subcategory-page-number" *ngFor="let page of visiblePages()" [class.selected]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" [disabled]="loading" (click)="irAPagina(page)">{{ page + 1 }}</button>
+          <button type="button" class="subcategory-page-icon" aria-label="Página siguiente" [disabled]="totalPages === 0 || pageIndex >= totalPages - 1 || loading" (click)="irAPagina(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+        </nav>
+      </div>
+    </footer>
+  </section>
+
+  <dialog #subcategoryEditor class="subcategory-editor" aria-labelledby="subcategory-editor-title" aria-describedby="subcategory-editor-description" [attr.aria-busy]="saving" (cancel)="onCancel($event)" (click)="onBackdropClick($event)">
+    <header class="subcategory-editor-heading">
+      <span class="subcategory-editor-icon" aria-hidden="true"><mat-icon>label_outline</mat-icon></span>
+      <div class="subcategory-editor-title-block">
+        <p class="subcategory-eyebrow">Catálogo de atención</p>
+        <h2 id="subcategory-editor-title">{{ editingId !== null ? 'Editar subcategoría' : 'Nueva subcategoría' }}</h2>
+        <p id="subcategory-editor-description">Organiza tus solicitudes dentro de una categoría.</p>
+      </div>
+      <button type="button" class="subcategory-close" aria-label="Cerrar formulario de subcategoría" (click)="closeModal()" [disabled]="saving"><mat-icon aria-hidden="true">close</mat-icon></button>
+    </header>
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="subcategory-editor-body">
+        <div class="subcategory-feedback subcategory-error" *ngIf="categoriesError" role="alert">{{ categoriesError }}<button type="button" (click)="loadCategories()" [disabled]="loadingCategories || saving">Reintentar categorías</button></div>
+        <p class="subcategory-editor-hint" *ngIf="loadingCategories" role="status">Cargando categorías…</p>
+        <p class="subcategory-editor-hint" *ngIf="!loadingCategories && !categoriesError && !editorCategories.length" role="status">No hay categorías activas disponibles. Activa o crea una categoría antes de registrar la subcategoría.</p>
+        <div class="subcategory-field">
+          <label for="subcategory-editor-category">Categoría <span class="subcategory-required" aria-hidden="true">*</span></label>
+          <div class="subcategory-editor-select">
+            <span aria-hidden="true"><mat-icon>account_tree</mat-icon></span>
+            <select id="subcategory-editor-category" autofocus aria-required="true" formControlName="categoriaId" [attr.aria-invalid]="fieldError('categoriaId') ? 'true' : null" [attr.aria-describedby]="'subcategory-category-hint' + (fieldError('categoriaId') ? ' subcategory-category-error' : '')">
+              <option [ngValue]="null">Selecciona una categoría</option>
+              <option *ngFor="let category of editorCategories; trackBy: trackCategory" [ngValue]="category.id">{{ category.nombre }}{{ category.activa ? '' : ' (Inactiva)' }}</option>
+            </select>
+          </div>
+          <p id="subcategory-category-hint" class="subcategory-editor-hint">{{ editingId !== null ? 'Puedes conservar la categoría original aunque esté inactiva.' : 'Solo se muestran categorías activas.' }}</p>
+          <p id="subcategory-category-error" class="subcategory-field-error" *ngIf="fieldError('categoriaId')">{{ fieldError('categoriaId') }}</p>
+        </div>
+        <div class="subcategory-field">
+          <label for="subcategory-editor-name">Nombre <span class="subcategory-required" aria-hidden="true">*</span></label>
+          <input id="subcategory-editor-name" aria-required="true" type="text" formControlName="nombre" placeholder="Ej. Falla de VPN" maxlength="100" [attr.aria-invalid]="fieldError('nombre') ? 'true' : null" [attr.aria-describedby]="'subcategory-name-count' + (fieldError('nombre') ? ' subcategory-name-error' : '')">
+          <div class="subcategory-field-meta">
+            <p id="subcategory-name-error" class="subcategory-field-error" *ngIf="fieldError('nombre')">{{ fieldError('nombre') }}</p>
+            <span id="subcategory-name-count" class="subcategory-character-count" [attr.aria-label]="(form.get('nombre')?.value || '').length + ' de 100 caracteres'">{{ (form.get('nombre')?.value || '').length }}/100</span>
+          </div>
+        </div>
+        <div class="subcategory-field">
+          <label for="subcategory-editor-description-input">Descripción <span class="subcategory-optional">Opcional</span></label>
+          <textarea id="subcategory-editor-description-input" formControlName="descripcion" rows="3" maxlength="255" placeholder="Describe qué solicitudes agrupa esta subcategoría." [attr.aria-invalid]="fieldError('descripcion') ? 'true' : null" [attr.aria-describedby]="'subcategory-description-count' + (fieldError('descripcion') ? ' subcategory-description-error' : '')"></textarea>
+          <div class="subcategory-field-meta">
+            <p id="subcategory-description-error" class="subcategory-field-error" *ngIf="fieldError('descripcion')">{{ fieldError('descripcion') }}</p>
+            <span id="subcategory-description-count" class="subcategory-character-count" [attr.aria-label]="(form.get('descripcion')?.value || '').length + ' de 255 caracteres'">{{ (form.get('descripcion')?.value || '').length }}/255</span>
+          </div>
+        </div>
+        <label class="subcategory-active-control" [class.subcategory-active-off]="!form.get('activa')?.value" for="subcategory-editor-active">
+          <i class="subcategory-state-dot" aria-hidden="true"></i>
+          <span class="subcategory-state-copy"><strong>{{ form.get('activa')?.value ? 'Subcategoría activa' : 'Subcategoría inactiva' }}</strong><small id="subcategory-active-hint">{{ form.get('activa')?.value ? 'Disponible al crear tickets si su categoría está activa.' : 'No se mostrará al crear tickets.' }}</small></span>
+          <span class="subcategory-switch">
+            <input id="subcategory-editor-active" type="checkbox" role="switch" aria-label="Subcategoría activa" aria-describedby="subcategory-active-hint" formControlName="activa">
+            <span class="subcategory-switch-track" aria-hidden="true"></span>
+          </span>
+        </label>
+        <p class="subcategory-feedback subcategory-error" *ngIf="errorMessage" role="alert">{{ errorMessage }}</p>
+      </div>
+      <footer class="subcategory-editor-actions"><span>* Campos obligatorios</span><button type="button" class="subcategory-button subcategory-secondary" (click)="closeModal()" [disabled]="saving">Cancelar</button><button type="submit" class="subcategory-button subcategory-primary" [disabled]="saving || loadingCategories || !!categoriesError"><mat-icon aria-hidden="true">{{ saving ? 'hourglass_top' : 'save' }}</mat-icon>{{ saving ? 'Guardando…' : 'Guardar subcategoría' }}</button></footer>
+    </form>
+  </dialog>
+</section>

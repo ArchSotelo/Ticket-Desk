@@ -1,0 +1,70 @@
+<div class="reports-page">
+  <div class="page-header">
+    <p class="reports-eyebrow">Análisis y seguimiento</p>
+    <h1>Reportes &amp; Exportación de Métricas</h1>
+    <p>Consulta indicadores del servicio y descarga reportes para compartir o analizar.</p>
+  </div>
+
+  <section class="report-box metrics-export" aria-labelledby="metrics-heading" [attr.aria-busy]="loadingMetrics">
+    <div class="metrics-heading">
+      <div><h2 id="metrics-heading">Indicadores de soporte</h2><p>Elige un periodo y exporta los gráficos de barras como imagen o informe PDF.</p></div>
+      <span class="period-label"><mat-icon aria-hidden="true">date_range</mat-icon>{{ periodLabel }}</span>
+    </div>
+    <form class="metrics-period" (ngSubmit)="applyPeriod()" novalidate>
+      <div><label for="metrics-from">Desde</label><input id="metrics-from" name="metricsFrom" type="date" [(ngModel)]="dateFrom"></div>
+      <div><label for="metrics-to">Hasta</label><input id="metrics-to" name="metricsTo" type="date" [(ngModel)]="dateTo"></div>
+      <button mat-stroked-button type="submit" [disabled]="loadingMetrics"><mat-icon>filter_alt</mat-icon>Aplicar periodo</button>
+      <button mat-button type="button" (click)="clearPeriod()" [disabled]="loadingMetrics || (!appliedFrom && !appliedTo)">Limpiar</button>
+      <p class="period-error" role="alert" *ngIf="periodError">{{ periodError }}</p>
+    </form>
+    <div class="metrics-alert" role="alert" *ngIf="metricsError">{{ metricsError }} <button mat-button type="button" (click)="loadMetrics()" [disabled]="loadingMetrics">Reintentar</button></div>
+    <div class="metrics-loading" *ngIf="loadingMetrics" role="status">Cargando indicadores…</div>
+    <ng-container *ngIf="stats && !loadingMetrics">
+      <div class="kpi-summary">
+        <article class="kpi-card" *ngFor="let item of summary"><span>{{ item.label }}</span><strong>{{ item.value }}</strong></article>
+      </div>
+      <div class="metrics-charts">
+        <article class="metric-chart" *ngFor="let chart of charts">
+          <h3>{{ chart.title }}</h3>
+          <ul *ngIf="chart.bars.length; else noChartData">
+            <li *ngFor="let bar of chart.bars">
+              <span class="bar-label" [title]="bar.name">{{ bar.name }}</span>
+              <span class="bar-track" aria-hidden="true"><i [style.width.%]="barWidth(bar.value, chart)" [style.background]="chart.color"></i></span>
+              <strong>{{ bar.value | number }}</strong>
+            </li>
+          </ul>
+          <ng-template #noChartData><p class="no-chart-data">No hay datos para este periodo.</p></ng-template>
+        </article>
+      </div>
+      <div class="metrics-export-actions">
+        <button mat-raised-button color="primary" type="button" (click)="downloadKpisPng()" [disabled]="!charts.length"><mat-icon>image</mat-icon>Exportar gráficos PNG</button>
+        <button mat-stroked-button color="primary" type="button" (click)="exportPdf()" [disabled]="!charts.length"><mat-icon>picture_as_pdf</mat-icon>Preparar informe PDF</button>
+        <small>El PDF se abre en la ventana de impresión; selecciona “Guardar como PDF”.</small>
+      </div>
+    </ng-container>
+  </section>
+
+  <h2 class="downloads-heading">Descarga de datos</h2>
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <div class="jira-card report-box">
+        <div class="report-icon excel"><mat-icon>table_view</mat-icon></div>
+        <div class="report-content">
+          <h3>Reporte consolidado en Excel (.xlsx)</h3>
+          <p>Listado detallado de tickets con indicadores SLA, tiempos de atención, empresa y estado.</p>
+          <button mat-raised-button color="primary" type="button" [disabled]="downloading !== null" (click)="downloadReport('excel')"><mat-icon>file_download</mat-icon>Descargar Excel</button>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-3">
+      <div class="jira-card report-box">
+        <div class="report-icon csv"><mat-icon>text_snippet</mat-icon></div>
+        <div class="report-content">
+          <h3>Reporte en formato CSV</h3>
+          <p>Datos de tickets para importar en herramientas BI como Power BI, Tableau o Excel.</p>
+          <button mat-stroked-button color="primary" type="button" [disabled]="downloading !== null" (click)="downloadReport('csv')"><mat-icon>file_download</mat-icon>Descargar CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

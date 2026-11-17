@@ -1,0 +1,129 @@
+<div class="staff-ticket-workspace">
+  <header class="staff-list-heading">
+    <div>
+      <p class="staff-eyebrow">Mesa de ayuda</p>
+      <h1>Tickets e incidencias</h1>
+      <p>Gestiona y da seguimiento a las solicitudes de soporte.</p>
+    </div>
+    <div class="staff-header-actions">
+      <button class="staff-button staff-button-secondary" type="button" [disabled]="exporting" (click)="exportarExcel()">
+        <mat-icon aria-hidden="true">download</mat-icon>{{ exporting ? 'Exportando...' : 'Exportar Excel' }}
+      </button>
+      <a class="staff-button staff-button-primary" [routerLink]="newTicketRoute"><mat-icon aria-hidden="true">add</mat-icon>Nuevo ticket</a>
+    </div>
+  </header>
+
+  <div class="staff-feedback staff-feedback-error" role="alert" *ngIf="errorMessage"><mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ errorMessage }}</span></div>
+
+  <section class="staff-list-panel" aria-label="Listado de tickets">
+    <nav class="staff-status-tabs" aria-label="Filtrar tickets por estado">
+      <button type="button" class="staff-status-tab" *ngFor="let tab of statusTabs" [class.selected]="estadoSeleccionado === tab.code" [attr.aria-pressed]="estadoSeleccionado === tab.code" (click)="seleccionarEstado(tab.code)">
+        {{ tab.label }}<span class="staff-status-count" [attr.aria-label]="loadingCounts ? 'Cargando cantidad' : counts[tab.code] === null ? 'Cantidad no disponible' : null">{{ loadingCounts ? '…' : counts[tab.code] ?? '—' }}</span>
+      </button>
+    </nav>
+    <div class="staff-counts-error" *ngIf="countsError" role="status">
+      <span>{{ countsError }}</span><button type="button" (click)="cargarContadores(true)" [disabled]="loadingCounts">Reintentar resumen</button>
+    </div>
+
+    <form class="staff-filters" (ngSubmit)="aplicarFiltros()">
+      <div class="staff-primary-filters">
+        <div class="staff-field staff-search-field">
+          <label for="staff-ticket-search">Buscar por código, título o cliente</label>
+          <div class="staff-search-input">
+            <input id="staff-ticket-search" type="search" name="busqueda" [(ngModel)]="busqueda" placeholder="Buscar por código, título o cliente">
+            <mat-icon aria-hidden="true">search</mat-icon>
+          </div>
+        </div>
+        <div class="staff-field">
+          <label for="staff-ticket-state">Estado</label>
+          <select id="staff-ticket-state" name="estado" [(ngModel)]="estadoSeleccionado" (ngModelChange)="seleccionarEstado($event)">
+            <option value="">Todos</option><option value="NUEVO">Nuevo</option><option value="ASIGNADO">Asignado</option>
+            <option value="EN_PROCESO">En proceso</option><option value="PENDIENTE_CLIENTE">Pendiente cliente</option>
+            <option value="RESUELTO">Resuelto</option><option value="CERRADO">Cerrado</option><option value="CANCELADO">Cancelado</option>
+          </select>
+        </div>
+        <div class="staff-field">
+          <label for="staff-ticket-priority">Prioridad</label>
+          <select id="staff-ticket-priority" name="prioridad" [(ngModel)]="prioridadSeleccionada" (ngModelChange)="aplicarFiltros()">
+            <option value="">Todas</option><option *ngFor="let priority of prioridades" [value]="priority.nombre">{{ priority.nombre }}</option>
+          </select>
+        </div>
+        <button type="button" class="staff-button staff-button-secondary staff-more-filters" (click)="toggleFilters()" [attr.aria-expanded]="filtersOpen" aria-controls="staff-advanced-filters">
+          <mat-icon aria-hidden="true">tune</mat-icon>{{ filtersOpen ? 'Menos filtros' : 'Más filtros' }}<mat-icon aria-hidden="true">{{ filtersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+      </div>
+      <div id="staff-advanced-filters" class="staff-secondary-filters" [class.expanded]="filtersOpen">
+        <ng-container *ngIf="filtersOpen">
+          <div class="staff-field">
+            <label for="staff-ticket-category">Categoría</label>
+            <select id="staff-ticket-category" name="categoria" [(ngModel)]="categoriaSeleccionada">
+              <option [ngValue]="''">Todas</option><option *ngFor="let category of categorias" [ngValue]="category.id">{{ category.nombre }}</option>
+            </select>
+          </div>
+          <div class="staff-field">
+            <label for="staff-date-from">Desde</label>
+            <input id="staff-date-from" type="date" name="desde" [(ngModel)]="fechaDesde" [attr.aria-invalid]="!!filterError" [attr.aria-describedby]="filterError ? 'staff-filter-error' : null">
+          </div>
+          <div class="staff-field">
+            <label for="staff-date-to">Hasta</label>
+            <input id="staff-date-to" type="date" name="hasta" [(ngModel)]="fechaHasta" [attr.aria-invalid]="!!filterError" [attr.aria-describedby]="filterError ? 'staff-filter-error' : null">
+          </div>
+        </ng-container>
+        <div class="staff-filter-actions">
+          <button class="staff-button staff-button-secondary" type="button" (click)="limpiarFiltros()"><mat-icon aria-hidden="true">close</mat-icon>Limpiar</button>
+          <button class="staff-button staff-button-primary" type="submit"><mat-icon aria-hidden="true">search</mat-icon>Filtrar</button>
+        </div>
+      </div>
+      <p id="staff-filter-error" class="staff-filter-error" *ngIf="filterError" role="alert">{{ filterError }}</p>
+    </form>
+
+    <div class="staff-results-heading" *ngIf="!loadingTickets && !listError">
+      <p><strong>{{ totalElements }}</strong> {{ totalElements === 1 ? 'ticket encontrado' : 'tickets encontrados' }}</p>
+      <span>{{ hasFilters ? 'Filtros activos' : 'Lista de solicitudes' }}</span>
+    </div>
+    <div class="staff-list-state" *ngIf="loadingTickets" role="status"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><p>Cargando tickets...</p></div>
+    <div class="staff-list-state staff-list-error" *ngIf="!loadingTickets && listError" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon><h2>No pudimos cargar los tickets</h2><p>{{ listError }}</p>
+      <button class="staff-button staff-button-secondary" type="button" (click)="cargarTickets(pageIndex, true)">Reintentar</button>
+    </div>
+
+    <ng-container *ngIf="!loadingTickets && !listError && tickets.length">
+      <div class="staff-table-scroll" tabindex="0" role="region" aria-label="Tabla de tickets, desplázate horizontalmente en pantallas pequeñas">
+        <table class="staff-ticket-table">
+          <thead><tr><th scope="col">Ticket</th><th scope="col">Cliente</th><th scope="col">Categoría</th><th scope="col">Prioridad</th><th scope="col">Estado</th><th scope="col">Creado</th><th scope="col">Acciones</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let ticket of tickets; trackBy: trackTicket">
+              <td>
+                <a class="staff-ticket-title" [routerLink]="detailRoute(ticket.id)" [queryParams]="{ returnTo: listRoute }">{{ ticket.titulo }}</a>
+                <span class="staff-ticket-code">{{ ticket.codigo }}</span>
+              </td>
+              <td><div class="staff-client-cell"><span class="staff-client-avatar" [attr.data-tone]="avatarTone(ticket.clienteNombre)" aria-hidden="true">{{ initials(ticket.clienteNombre) }}</span><span>{{ ticket.clienteNombre || 'No disponible' }}</span></div></td>
+              <td><span class="staff-category">{{ ticket.categoriaNombre || 'Sin categoría' }}</span></td>
+              <td><span class="staff-ticket-badge" [attr.data-tone]="priorityTone(ticket.prioridadNombre)"><i aria-hidden="true"></i>{{ ticket.prioridadNombre || 'Sin prioridad' }}</span></td>
+              <td><span class="staff-ticket-badge" [attr.data-tone]="statusTone(ticket.estadoCodigo)"><i aria-hidden="true"></i>{{ ticket.estadoNombre || ticket.estadoCodigo || 'No disponible' }}</span></td>
+              <td><time [attr.datetime]="ticket.fechaCreacion">{{ formatDate(ticket.fechaCreacion) }}</time></td>
+              <td><a class="staff-detail-link" [routerLink]="detailRoute(ticket.id)" [queryParams]="{ returnTo: listRoute }" [attr.aria-label]="'Ver detalle del ticket ' + ticket.codigo"><mat-icon aria-hidden="true">visibility</mat-icon><span>Ver detalle</span></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <footer class="staff-pagination">
+        <p>Mostrando <strong>{{ firstItemIndex }}–{{ lastItemIndex }}</strong> de {{ totalElements }} tickets</p>
+        <div class="staff-pagination-controls">
+          <label for="staff-page-size">Filas</label>
+          <select id="staff-page-size" [ngModel]="pageSize" (ngModelChange)="cambiarTamanoPagina($event)"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select>
+          <button class="staff-page-button" type="button" aria-label="Página anterior" [disabled]="pageIndex === 0 || loadingTickets" (click)="irAPagina(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
+          <button class="staff-page-button" type="button" *ngFor="let page of visiblePages()" [class.active]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" (click)="irAPagina(page)">{{ page + 1 }}</button>
+          <button class="staff-page-button" type="button" aria-label="Página siguiente" [disabled]="pageIndex >= totalPages - 1 || loadingTickets" (click)="irAPagina(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+        </div>
+      </footer>
+    </ng-container>
+
+    <div class="staff-list-state staff-list-empty" *ngIf="!loadingTickets && !listError && !tickets.length">
+      <mat-icon aria-hidden="true">inbox</mat-icon><h2>{{ hasFilters ? 'No encontramos tickets con esos filtros' : 'No hay tickets para mostrar' }}</h2>
+      <p>{{ hasFilters ? 'Prueba otra búsqueda o limpia los filtros para ver todos los tickets.' : 'Crea un nuevo ticket para empezar a gestionar las solicitudes.' }}</p>
+      <button class="staff-button staff-button-secondary" type="button" *ngIf="hasFilters" (click)="limpiarFiltros()">Limpiar filtros</button>
+      <a class="staff-button staff-button-primary" *ngIf="!hasFilters" [routerLink]="newTicketRoute"><mat-icon aria-hidden="true">add</mat-icon>Nuevo ticket</a>
+    </div>
+  </section>
+</div>

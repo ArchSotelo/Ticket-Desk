@@ -1,0 +1,75 @@
+    <aside class="sidebar" [class.collapsed]="collapsed">
+      
+      <nav class="sidebar-nav">
+        <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+          <mat-icon>dashboard</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Dashboard</span>
+        </a>
+
+        <a routerLink="/tickets/kanban" routerLinkActive="active" class="nav-item">
+          <mat-icon>view_kanban</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Tablero Kanban</span>
+        </a>
+
+        <a routerLink="/tickets/list" routerLinkActive="active" class="nav-item">
+          <mat-icon>confirmation_number</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Lista de Tickets</span>
+        </a>
+
+        <a routerLink="/knowledge-base" routerLinkActive="active" class="nav-item">
+          <mat-icon>menu_book</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Base Conocimiento</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('CONTACT_READ')" routerLink="/contactos" routerLinkActive="active" class="nav-item">
+          <mat-icon>contacts</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Contactos</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('REPORT_VIEW')" routerLink="/reports" routerLinkActive="active" class="nav-item">
+          <mat-icon>bar_chart</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Reportes & SLA</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('AUDIT_VIEW')" routerLink="/audit" routerLinkActive="active" class="nav-item">
+          <mat-icon>security</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Auditoría</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('SERVICE_CONFIG_MANAGE')" routerLink="/ajustes" [class.active]="settingsActive" [attr.aria-current]="settingsActive ? 'page' : null" class="nav-item">
+          <mat-icon>settings</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Ajustes</span>
+        </a>
+
+        <a routerLink="/servicios" routerLinkActive="active" class="nav-item">
+          <mat-icon>miscellaneous_services</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Servicios</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('ORGANIZATION_MANAGE')" routerLink="/empresas" routerLinkActive="active" class="nav-item">
+          <mat-icon>business</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Empresas</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('ORGANIZATION_MANAGE')" routerLink="/areas" routerLinkActive="active" class="nav-item">
+          <mat-icon>apartment</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Áreas</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('CATEGORY_MANAGE')" routerLink="/categorias" routerLinkActive="active" class="nav-item">
+          <mat-icon>category</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Categorias</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('CATEGORY_MANAGE')" routerLink="/subcategorias" routerLinkActive="active" class="nav-item">
+          <mat-icon>label</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Subcategorias</span>
+        </a>
+
+        <a *ngIf="auth.hasPermission('USER_MANAGE')" routerLink="/users" routerLinkActive="active" class="nav-item">
+          <mat-icon>people</mat-icon>
+          <span class="nav-text" *ngIf="!collapsed">Usuarios & Roles</span>
+        </a>
+
+      </nav>
+    </aside>

@@ -1,0 +1,27 @@
+.git
+.github
+backend/target
+backend/uploads
+backend/.idea
+frontend/node_modules
+frontend/dist
+frontend/.angular
+*.log
+
+# Secretos y configuración local
+.env
+.env.*
+**/.env
+**/.env.*
+.aws
+.codex
+.agents
+.junie
+**/.junie
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+**/application-local.*
+**/application-secrets.*

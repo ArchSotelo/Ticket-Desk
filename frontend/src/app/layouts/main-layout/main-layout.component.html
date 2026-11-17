@@ -1,0 +1,12 @@
+    <div class="layout-wrapper page-shell" (keydown.escape)="navigation.closeMobile()">
+      <app-topbar [sidebarExpanded]="navigation.expanded()" (toggleSidebar)="navigation.toggle()"></app-topbar>
+      <div class="layout-body">
+        <button *ngIf="navigation.isCompact() && navigation.mobileOpen()" class="sidebar-backdrop" aria-label="Cerrar menú" (click)="navigation.closeMobile()"></button>
+        <app-sidebar [collapsed]="sidebarCollapsed" [class.mobile-open]="navigation.mobileOpen()" (click)="navigation.closeMobile()"></app-sidebar>
+        <main class="main-content">
+      
+          <router-outlet></router-outlet>
+        </main>
+      </div>
+      <app-brand-footer></app-brand-footer>
+    </div>

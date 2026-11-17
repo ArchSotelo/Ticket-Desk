@@ -1,0 +1,84 @@
+<section class="area-workspace" aria-labelledby="area-heading">
+  <header class="area-page-heading">
+    <div><p class="area-eyebrow">Administración</p><h1 id="area-heading">Áreas</h1><p>Organiza las áreas internas de cada empresa.</p></div>
+    <button class="area-button area-primary" type="button" (click)="openModal()" [disabled]="busy"><mat-icon aria-hidden="true">add</mat-icon>Nueva área</button>
+  </header>
+  <p class="area-feedback area-success" *ngIf="successMessage" role="status">{{ successMessage }}</p>
+  <p class="area-feedback area-error" *ngIf="errorMessage && !showModal" role="alert">{{ errorMessage }}</p>
+  <div class="area-feedback area-error" *ngIf="companiesError && !showModal" role="alert">{{ companiesError }}<button type="button" (click)="loadCompanies()" [disabled]="loadingCompanies">Reintentar empresas</button></div>
+
+  <section class="area-directory" aria-label="Directorio de áreas">
+    <form class="area-filters" (submit)="$event.preventDefault(); applyFilters()" aria-label="Filtros de áreas">
+      <div class="area-field area-search">
+        <label for="area-search">Buscar área</label>
+        <div><mat-icon aria-hidden="true">search</mat-icon><input id="area-search" name="search" type="search" placeholder="Nombre del área" [(ngModel)]="search" (ngModelChange)="applyFilters()"></div>
+      </div>
+      <div class="area-field">
+        <label for="area-company">Empresa</label>
+        <select id="area-company" name="company" [(ngModel)]="company" (ngModelChange)="applyFilters()">
+          <option value="">Todas las empresas</option><option *ngFor="let empresa of filterCompanies; trackBy: trackCompany" [value]="empresa.id">{{ empresa.name }}</option>
+          <option *ngIf="company && !selectedCompanyExists" [value]="company">Empresa seleccionada (sin áreas)</option>
+        </select>
+      </div>
+      <div class="area-field">
+        <label for="area-status">Estado</label>
+        <select id="area-status" name="status" [(ngModel)]="status" (ngModelChange)="applyFilters()"><option value="">Todos los estados</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select>
+      </div>
+      <button type="button" class="area-button area-secondary" (click)="clearFilters()" [disabled]="!hasFilters"><mat-icon aria-hidden="true">restart_alt</mat-icon>Limpiar</button>
+    </form>
+    <div class="area-results">
+      <p aria-live="polite">{{ loading ? 'Cargando áreas…' : loaded ? totalElements + (totalElements === 1 ? ' área encontrada' : ' áreas encontradas') : 'Directorio de áreas' }}</p>
+      <span>Directorio de áreas</span>
+    </div>
+    <div class="area-feedback area-error area-load-error" *ngIf="loadError" role="alert">{{ loadError }}<button type="button" (click)="load()" [disabled]="loading">Reintentar áreas</button></div>
+    <div class="area-table-scroll" [attr.aria-busy]="loading">
+      <table class="area-table"><caption class="area-sr-only">Áreas registradas, su empresa y estado</caption>
+        <thead><tr><th scope="col">Área</th><th scope="col">Empresa</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let area of areas; trackBy: trackArea">
+            <td><span class="area-identity"><span class="area-avatar" aria-hidden="true"><mat-icon>account_tree</mat-icon></span><strong>{{ area.nombre }}</strong></span></td>
+            <td class="area-company-cell">{{ area.empresaNombre || 'Empresa #' + area.empresaId }}</td>
+            <td><span class="area-status-pill" [class.area-inactive]="!area.activo"><i aria-hidden="true"></i>{{ area.activo ? 'Activa' : 'Inactiva' }}</span></td>
+            <td><div class="area-row-actions">
+              <button type="button" class="area-edit-button" (click)="edit(area)" [disabled]="busy || loading || !!loadError" [attr.aria-label]="'Editar área ' + area.nombre"><mat-icon aria-hidden="true">edit</mat-icon>Editar</button>
+              <button type="button" class="area-delete-button" (click)="remove(area)" [disabled]="busy || loading || !!loadError || !area.activo" [attr.aria-label]="'Eliminar área ' + area.nombre" [title]="area.activo ? 'Eliminar área (desactivar)' : 'El área ya está inactiva'"><mat-icon aria-hidden="true">{{ deletingId === area.id ? 'hourglass_top' : 'delete_outline' }}</mat-icon></button>
+            </div></td>
+          </tr>
+          <tr *ngIf="!areas.length"><td colspan="4"><div class="area-empty">
+            <mat-icon aria-hidden="true">{{ loading ? 'hourglass_top' : loadError ? 'cloud_off' : 'account_tree' }}</mat-icon>
+            <h2>{{ loading ? 'Cargando directorio…' : loadError ? 'El directorio no está disponible' : hasFilters ? 'No encontramos áreas con estos filtros' : 'Todavía no hay áreas registradas' }}</h2>
+            <p *ngIf="!loading && !loadError">{{ hasFilters ? 'Prueba con otro nombre, empresa o estado.' : 'Crea la primera área y vincúlala con una empresa.' }}</p>
+            <button *ngIf="hasFilters && !loading && !loadError" type="button" class="area-button area-secondary" (click)="clearFilters()">Limpiar filtros</button>
+          </div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="area-pagination">
+      <p>Mostrando <strong>{{ firstItemIndex }}–{{ lastItemIndex }}</strong> de {{ totalElements }}</p>
+      <div class="area-pagination-controls">
+        <label for="area-page-size">Filas</label><select id="area-page-size" name="pageSize" [ngModel]="pageSize" (ngModelChange)="cambiarTamanoPagina($event)" [disabled]="loading"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select>
+        <nav class="area-pages" aria-label="Paginación de áreas">
+          <button type="button" class="area-page-icon" aria-label="Página anterior" [disabled]="pageIndex === 0 || loading" (click)="irAPagina(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
+          <button type="button" class="area-page-number" *ngFor="let page of visiblePages()" [class.selected]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" [disabled]="loading" (click)="irAPagina(page)">{{ page + 1 }}</button>
+          <button type="button" class="area-page-icon" aria-label="Página siguiente" [disabled]="totalPages === 0 || pageIndex >= totalPages - 1 || loading" (click)="irAPagina(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+        </nav>
+      </div>
+    </footer>
+  </section>
+
+  <dialog #areaEditor class="area-editor" aria-labelledby="area-editor-title" aria-describedby="area-editor-description" [attr.aria-busy]="saving" (cancel)="onCancel($event)" (click)="onBackdropClick($event)">
+    <header class="area-editor-heading"><div><p class="area-eyebrow">Directorio de áreas</p><h2 id="area-editor-title">{{ editingId !== null ? 'Editar área' : 'Nueva área' }}</h2><p id="area-editor-description">Vincula el área con su empresa correspondiente.</p></div><button type="button" class="area-close" aria-label="Cerrar formulario de área" (click)="closeModal()" [disabled]="saving"><mat-icon aria-hidden="true">close</mat-icon></button></header>
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div class="area-editor-body">
+        <div class="area-feedback area-error" *ngIf="companiesError" role="alert">{{ companiesError }}<button type="button" (click)="loadCompanies()" [disabled]="loadingCompanies || saving">Reintentar empresas</button></div>
+        <p class="area-editor-hint" *ngIf="loadingCompanies" role="status">Cargando empresas…</p>
+        <div class="area-field"><label for="area-editor-company">Empresa <span aria-hidden="true">*</span></label><select id="area-editor-company" autofocus aria-required="true" formControlName="empresaId" [attr.aria-invalid]="fieldError('empresaId') ? 'true' : null" aria-describedby="area-company-error"><option [ngValue]="null">Selecciona una empresa</option><option *ngFor="let empresa of empresas" [ngValue]="empresa.id">{{ empresa.razonSocial }}{{ empresa.estado ? '' : ' (Inactiva)' }}</option></select><p id="area-company-error" class="area-field-error" *ngIf="fieldError('empresaId')">{{ fieldError('empresaId') }}</p></div>
+        <div class="area-field"><label for="area-editor-name">Nombre <span aria-hidden="true">*</span></label><input id="area-editor-name" aria-required="true" type="text" formControlName="nombre" placeholder="Ej. Sistemas" maxlength="100" [attr.aria-invalid]="fieldError('nombre') ? 'true' : null" aria-describedby="area-name-error"><p id="area-name-error" class="area-field-error" *ngIf="fieldError('nombre')">{{ fieldError('nombre') }}</p></div>
+        <div class="area-field"><label for="area-editor-description-input">Descripción <span class="area-optional">(opcional)</span></label><textarea id="area-editor-description-input" formControlName="descripcion" rows="3" maxlength="255" placeholder="Describe la función de esta área." [attr.aria-invalid]="fieldError('descripcion') ? 'true' : null"></textarea><p class="area-field-error" *ngIf="fieldError('descripcion')">{{ fieldError('descripcion') }}</p></div>
+        <label class="area-active-control"><input type="checkbox" formControlName="activo"><span><strong>Área activa</strong><small>Indica si el área está habilitada.</small></span></label>
+        <p class="area-feedback area-error" *ngIf="errorMessage" role="alert">{{ errorMessage }}</p>
+      </div>
+      <footer class="area-editor-actions"><span>* Campos obligatorios</span><button type="button" class="area-button area-secondary" (click)="closeModal()" [disabled]="saving">Cancelar</button><button type="submit" class="area-button area-primary" [disabled]="saving || loadingCompanies || !!companiesError"><mat-icon aria-hidden="true">{{ saving ? 'hourglass_top' : 'save' }}</mat-icon>{{ saving ? 'Guardando…' : 'Guardar área' }}</button></footer>
+    </form>
+  </dialog>
+</section>

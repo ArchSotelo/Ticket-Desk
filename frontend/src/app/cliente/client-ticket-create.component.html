@@ -1,0 +1,211 @@
+<div class="ticket-create-page">
+  <header class="ticket-page-header">
+    <div class="header-navigation">
+      <button mat-button type="button" class="back-link" (click)="cancelar()" [disabled]="loading">
+        <mat-icon>arrow_back</mat-icon>Volver a tickets
+      </button>
+      <span class="portal-badge"><mat-icon>{{ esPersonal ? 'support_agent' : 'person_outline' }}</mat-icon>{{ nombrePortal }}</span>
+    </div>
+    <p class="ticket-eyebrow">Nuevo ticket</p>
+    <h1>{{ esPersonal ? 'Crear ticket para un cliente' : 'Crear una solicitud' }}</h1>
+    <p class="header-description">{{ esPersonal
+      ? 'Registra la solicitud y comparte los detalles para una atención más rápida.'
+      : 'Describe tu incidencia con detalle para acelerar la atención.' }}</p>
+  </header>
+
+  <form #ticketFormElement [formGroup]="ticketForm" (ngSubmit)="onSubmit()">
+    <section #validationSummary class="validation-summary" tabindex="-1" role="alert"
+      *ngIf="submitAttempted && validationIssues.length" aria-labelledby="ticket-validation-title">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <div>
+        <h2 id="ticket-validation-title">Revisa los campos obligatorios</h2>
+        <p>Completa o corrige estos datos para enviar el ticket:</p>
+        <ul>
+          <li *ngFor="let issue of validationIssues">
+            <button *ngIf="issue.control !== 'empresaId'" type="button" (click)="focusField(issue.control)">{{ issue.message }}</button>
+            <span *ngIf="issue.control === 'empresaId'">{{ issue.message }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="ticket-form-layout">
+      <section class="ticket-panel form-card" aria-labelledby="request-data-title">
+        <div class="panel-heading">
+          <span class="panel-icon"><mat-icon>edit_note</mat-icon></span>
+          <div>
+            <h2 id="request-data-title">Datos de la solicitud</h2>
+            <p>Completa la información del ticket para registrarlo en el sistema.</p>
+          </div>
+        </div>
+
+        <div class="fields-grid">
+          <div class="field-group full-width" *ngIf="esPersonal">
+            <label id="ticket-client-label">Cliente <span aria-hidden="true">*</span></label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-select formControlName="clienteId" aria-labelledby="ticket-client-label" required
+                placeholder="Seleccionar cliente" (selectionChange)="onClienteChange($event.value)">
+                <mat-option *ngFor="let cliente of clientesActivos" [value]="cliente.id">
+                  {{ nombreCliente(cliente) }} · {{ cliente.email }}
+                </mat-option>
+              </mat-select>
+              <mat-hint>Solo se muestran clientes activos.</mat-hint>
+              <mat-error>{{ fieldError('clienteId') }}</mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="field-group">
+            <label for="ticket-title">Título <span aria-hidden="true">*</span></label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <input id="ticket-title" matInput formControlName="titulo" required placeholder="Ej. No puedo acceder al correo">
+              <mat-hint>Mínimo 5 caracteres.</mat-hint>
+              <mat-error>{{ fieldError('titulo') }}</mat-error>
+            </mat-form-field>
+          </div>
+          <div class="field-group">
+            <label id="ticket-priority-label">Prioridad <span aria-hidden="true">*</span></label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-select formControlName="prioridadId" aria-labelledby="ticket-priority-label" required placeholder="Seleccionar prioridad">
+                <mat-option *ngFor="let p of prioridades" [value]="p.id">{{ p.nombre }}</mat-option>
+              </mat-select>
+              <mat-error>{{ fieldError('prioridadId') }}</mat-error>
+            </mat-form-field>
+          </div>
+          <div class="field-group">
+            <label id="ticket-category-label">Categoría <span aria-hidden="true">*</span></label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-select formControlName="categoriaId" aria-labelledby="ticket-category-label" required
+                placeholder="Seleccionar categoría" (selectionChange)="onCategoriaChange($event.value)">
+                <mat-option *ngFor="let c of categorias" [value]="c.id">{{ c.nombre }}</mat-option>
+              </mat-select>
+              <mat-error>{{ fieldError('categoriaId') }}</mat-error>
+            </mat-form-field>
+          </div>
+          <div class="field-group">
+            <label id="ticket-subcategory-label">Subcategoría <span aria-hidden="true">*</span></label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-select formControlName="subcategoriaId" aria-labelledby="ticket-subcategory-label" required
+                [placeholder]="ticketForm.get('categoriaId')?.value ? 'Seleccionar subcategoría' : 'Selecciona primero una categoría'">
+                <mat-option *ngFor="let sc of subcategorias" [value]="sc.id">{{ sc.nombre }}</mat-option>
+              </mat-select>
+              <mat-hint *ngIf="ticketForm.get('categoriaId')?.value && !subcategorias.length">
+                Esta categoría no tiene subcategorías disponibles. Elige otra o solicita su configuración.
+              </mat-hint>
+              <mat-error>{{ fieldError('subcategoriaId') }}</mat-error>
+            </mat-form-field>
+          </div>
+          <div class="field-group full-width">
+            <label for="ticket-description">Descripción <span aria-hidden="true">*</span></label>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="description-field">
+              <textarea id="ticket-description" matInput formControlName="descripcion" rows="7" required
+                placeholder="Explica qué ocurrió, desde cuándo y qué mensaje aparece..."></textarea>
+              <mat-hint>Mínimo 10 caracteres.</mat-hint>
+              <mat-error>{{ fieldError('descripcion') }}</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+      </section>
+
+      <aside class="ticket-side-panels" aria-label="Información y adjuntos del ticket">
+        <section class="ticket-panel requester-card" aria-labelledby="requester-title">
+          <div class="panel-heading">
+            <span class="panel-icon"><mat-icon>{{ esPersonal ? 'person_outline' : 'domain' }}</mat-icon></span>
+            <h2 id="requester-title">{{ esPersonal ? 'Cliente seleccionado' : 'Empresa y área' }}</h2>
+          </div>
+          <div class="requester-identity" *ngIf="esPersonal; else clientOrganization">
+            <span class="requester-avatar" aria-hidden="true">
+              <ng-container *ngIf="solicitante; else emptyAvatar">{{ inicialesSolicitante }}</ng-container>
+              <ng-template #emptyAvatar><mat-icon>person_outline</mat-icon></ng-template>
+            </span>
+            <div class="requester-details">
+              <h3>{{ nombreSolicitante }}</h3>
+              <ng-container *ngIf="solicitante as cliente; else selectClientHelp">
+                <p class="requester-email" *ngIf="cliente.email">{{ cliente.email }}</p>
+                <div class="requester-organization">
+                  <mat-icon aria-hidden="true">domain</mat-icon>
+                  <div>
+                    <strong>{{ cliente.empresaNombre || 'Sin empresa asignada' }}</strong>
+                    <p>{{ cliente.areaNombre || 'Sin área asignada' }}</p>
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #selectClientHelp><p>Su empresa y área aparecerán aquí al seleccionarlo.</p></ng-template>
+            </div>
+          </div>
+          <ng-template #clientOrganization>
+            <dl class="client-organization" *ngIf="profile as cliente; else loadingOrganization">
+              <div>
+                <dt>Empresa</dt>
+                <dd>{{ cliente.empresaNombre || 'Sin empresa asignada' }}</dd>
+              </div>
+              <div>
+                <dt>Área</dt>
+                <dd>{{ cliente.areaNombre || 'Sin área asignada' }}</dd>
+              </div>
+            </dl>
+            <ng-template #loadingOrganization><p class="organization-loading" role="status">Cargando empresa y área...</p></ng-template>
+          </ng-template>
+        </section>
+
+        <section class="ticket-panel attachments-card" aria-labelledby="attachments-title">
+          <div class="panel-heading">
+            <span class="panel-icon"><mat-icon>attach_file</mat-icon></span>
+            <div><h2 id="attachments-title">Adjuntos</h2><p>Agrega evidencia para facilitar la atención.</p></div>
+          </div>
+          <div class="attachment-actions">
+            <button mat-stroked-button type="button" (click)="fileImageInput.click()" [disabled]="loading">
+              <mat-icon>image</mat-icon>Imagen
+            </button>
+            <button mat-stroked-button type="button" (click)="fileDocInput.click()" [disabled]="loading">
+              <mat-icon>attach_file</mat-icon>Archivo
+            </button>
+          </div>
+          <input #fileImageInput type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.log,.csv" multiple hidden (change)="onFilesSelected($event)">
+          <input #fileDocInput type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.log,.csv" multiple hidden (change)="onFilesSelected($event)">
+          <button class="drop-zone" type="button" [class.dragging]="isDragging" [disabled]="loading"
+            (click)="fileDocInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+            <mat-icon aria-hidden="true">cloud_upload</mat-icon>
+            <strong>Arrastra tus archivos aquí</strong>
+            <span>O haz clic para seleccionarlos.</span>
+          </button>
+          <div class="pending-list" *ngIf="adjuntosPendientes.length" aria-live="polite">
+            <p class="attachment-count">{{ adjuntosPendientes.length }} archivo(s) para adjuntar</p>
+            <div class="pending-item" *ngFor="let file of adjuntosPendientes; let i = index">
+              <mat-icon aria-hidden="true">{{ file.type.startsWith('image/') ? 'image' : 'description' }}</mat-icon>
+              <div><strong>{{ file.name }}</strong><span>{{ formatSize(file.size) }}</span></div>
+              <button mat-icon-button type="button" (click)="removeFile(i)" [disabled]="loading" [attr.aria-label]="'Quitar ' + file.name">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="ticket-panel help-card" aria-labelledby="description-help-title">
+          <div class="panel-heading">
+            <span class="panel-icon"><mat-icon>info_outline</mat-icon></span>
+            <h2 id="description-help-title">Una buena descripción incluye</h2>
+          </div>
+          <ul>
+            <li><mat-icon aria-hidden="true">check_circle_outline</mat-icon>Qué necesitas resolver</li>
+            <li><mat-icon aria-hidden="true">check_circle_outline</mat-icon>Desde cuándo ocurre</li>
+            <li><mat-icon aria-hidden="true">check_circle_outline</mat-icon>El mensaje de error, si existe</li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+
+    <div class="message error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</div>
+    <footer class="ticket-panel ticket-submit-bar">
+      <p aria-live="polite">
+        <ng-container *ngIf="!loading">Los campos con <span class="required-marker">*</span> son obligatorios.</ng-container>
+        <ng-container *ngIf="loading">{{ uploadingFiles ? 'Adjuntando archivos al ticket...' : 'Registrando tu ticket...' }}</ng-container>
+      </p>
+      <div class="form-actions">
+        <button mat-stroked-button type="button" (click)="cancelar()" [disabled]="loading">Cancelar</button>
+        <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+          <mat-icon>send</mat-icon>{{ loading ? 'Enviando...' : 'Enviar ticket' }}
+        </button>
+      </div>
+    </footer>
+  </form>
+</div>

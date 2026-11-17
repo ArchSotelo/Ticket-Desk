@@ -1,0 +1,41 @@
+<section class="service-list-workspace service-history-workspace" aria-labelledby="service-history-title">
+  <header class="service-list-page-heading">
+    <div><p class="service-list-eyebrow">Historial general</p><h1 id="service-history-title">Historial de servicios</h1><p>Consulta los servicios finalizados y cancelados.</p></div>
+    <button type="button" class="service-list-button service-list-secondary" [routerLink]="basePath"><mat-icon aria-hidden="true">arrow_back</mat-icon> Volver a Servicios</button>
+  </header>
+
+  <form class="service-list-filters service-history-filters" (ngSubmit)="buscar()" novalidate>
+    <div class="service-list-field service-list-search"><label for="service-history-search">Buscar servicio</label><div><mat-icon aria-hidden="true">search</mat-icon><input id="service-history-search" name="busqueda" [(ngModel)]="busqueda" placeholder="Servicio o proveedor" type="search"></div></div>
+    <div class="service-list-field"><label for="service-history-status">Estado</label><select id="service-history-status" name="estado" [(ngModel)]="estado"><option value="">Todos los estados</option><option value="FINALIZADO">Finalizados</option><option value="CANCELADO">Cancelados</option></select></div>
+    <div class="service-list-field"><label for="service-history-from">Inicio desde</label><input id="service-history-from" name="desde" [(ngModel)]="desde" type="date" min="0001-01-01" max="9999-12-31" [attr.aria-invalid]="filterError ? 'true' : null" aria-describedby="service-history-date-hint service-history-filter-error"></div>
+    <div class="service-list-field"><label for="service-history-to">Inicio hasta</label><input id="service-history-to" name="hasta" [(ngModel)]="hasta" type="date" min="0001-01-01" max="9999-12-31" [attr.aria-invalid]="filterError ? 'true' : null" aria-describedby="service-history-date-hint service-history-filter-error"></div>
+    <button type="button" class="service-list-button service-list-secondary" (click)="clearFilters()" [disabled]="!hasFilters || loading">Limpiar</button>
+    <button type="submit" class="service-list-button service-list-primary" [disabled]="loading"><mat-icon aria-hidden="true">filter_alt</mat-icon> Filtrar</button>
+    <p id="service-history-date-hint" class="service-list-sr-only">Las fechas filtran el inicio de la vigencia del servicio, incluyendo ambos extremos.</p>
+    <p id="service-history-filter-error" class="service-history-filter-error" role="alert" *ngIf="filterError">{{ filterError }}</p>
+  </form>
+
+  <div class="service-list-feedback service-list-error" role="alert" *ngIf="iconsError">{{ iconsError }} <button type="button" (click)="loadCategorias()" [disabled]="loadingIcons" aria-label="Reintentar iconos">Reintentar</button></div>
+
+  <section class="service-list-directory" [attr.aria-busy]="loading" aria-labelledby="service-history-results-title">
+    <header class="service-list-results"><div><h2 id="service-history-results-title">Registros históricos</h2><p>Finalizados y cancelados</p></div><span aria-live="polite">{{ loaded ? totalElements + (totalElements === 1 ? ' registro encontrado' : ' registros encontrados') : (loading ? 'Cargando historial…' : 'Historial no disponible') }}</span></header>
+    <div class="service-list-empty" role="status" *ngIf="loading"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><p>Cargando historial de servicios…</p></div>
+    <div class="service-list-empty" role="alert" *ngIf="loadError"><mat-icon aria-hidden="true">error_outline</mat-icon><h2>No se pudo cargar el historial</h2><p>{{ loadError }}</p><button class="service-list-button service-list-secondary" type="button" (click)="load()" aria-label="Reintentar historial">Reintentar</button></div>
+    <div class="service-list-table-scroll" *ngIf="loaded && totalElements" tabindex="0" role="region" aria-label="Historial de servicios, tabla desplazable">
+      <table class="service-list-table service-history-table">
+        <caption class="service-list-sr-only">Servicios finalizados y cancelados que coinciden con los filtros aplicados.</caption>
+        <thead><tr><th scope="col">Servicio</th><th scope="col">Proveedor</th><th scope="col">Vigencia</th><th scope="col">Estado</th><th scope="col">Costo mensual</th><th scope="col">Acciones</th></tr></thead>
+        <tbody><tr *ngFor="let item of pageItems; trackBy: trackService">
+          <td><div class="service-list-identity"><span class="service-list-avatar"><mat-icon aria-hidden="true">{{ iconoServicio(item) }}</mat-icon></span><div><strong>{{ item.nombre }}</strong><small>{{ item.tipo }}</small></div></div></td>
+          <td>{{ item.proveedor }}</td>
+          <td><div class="service-list-dates"><span><small>Inicio</small>{{ formatDate(item.fechaInicio) }}</span><span><small>Fin</small>{{ formatDate(item.fechaFin) }}</span></div></td>
+          <td><span class="service-list-status-pill service-history-status" [class.cancelado]="item.estado === 'CANCELADO'"><mat-icon *ngIf="item.estado === 'FINALIZADO'" aria-hidden="true">check</mat-icon><i *ngIf="item.estado !== 'FINALIZADO'" aria-hidden="true"></i>{{ label(item.estado) }}</span></td>
+          <td class="service-list-cost-cell"><strong>{{ formatCost(item.costoMensual, item.divisa) }}</strong></td>
+          <td><a class="service-list-detail-button" [routerLink]="[basePath, item.id]" [queryParams]="detailQuery" [attr.aria-label]="'Ver detalle de ' + item.nombre"><mat-icon aria-hidden="true">visibility</mat-icon> Ver detalle</a></td>
+        </tr></tbody>
+      </table>
+    </div>
+    <div class="service-list-empty" *ngIf="loaded && !totalElements"><mat-icon aria-hidden="true">history</mat-icon><h2>{{ hasFilters ? 'No hay registros con los filtros aplicados' : 'No hay registros históricos de servicios' }}</h2><p>{{ hasFilters ? 'Prueba con otra búsqueda, estado o fecha de inicio.' : 'Aquí aparecerán los servicios finalizados y cancelados.' }}</p><button type="button" class="service-list-button service-list-secondary" (click)="clearFilters()" *ngIf="hasFilters">Limpiar filtros</button></div>
+    <footer class="service-list-pagination" *ngIf="loaded"><p>Mostrando <strong>{{ firstItem }}–{{ lastItem }}</strong> de <strong>{{ totalElements }}</strong></p><div class="service-list-pagination-controls"><label for="service-history-size">Filas</label><select id="service-history-size" [ngModel]="pageSize" (ngModelChange)="changeSize($event)"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select><nav class="service-list-pages" aria-label="Paginación del historial"><button type="button" aria-label="Página anterior" [disabled]="pageIndex === 0" (click)="goTo(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button><button type="button" *ngFor="let page of visiblePages()" [class.selected]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" (click)="goTo(page)">{{ page + 1 }}</button><button type="button" aria-label="Página siguiente" [disabled]="!totalPages || pageIndex >= totalPages - 1" (click)="goTo(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button></nav></div></footer>
+  </section>
+</section>

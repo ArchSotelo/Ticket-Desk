@@ -1,0 +1,171 @@
+<section class="services-page service-form-page">
+  <div class="form-page-top">
+    <button mat-button type="button" class="back-btn" [routerLink]="basePath">
+      <mat-icon>arrow_back</mat-icon> Volver a Servicios
+    </button>
+  </div>
+
+  <header class="form-page-heading">
+    <div class="heading-copy">
+      <span class="heading-symbol" aria-hidden="true">
+        <mat-icon>{{ isRenewal ? 'autorenew' : 'add_business' }}</mat-icon>
+      </span>
+      <div>
+        <span class="eyebrow">{{ isRenewal ? 'Nueva vigencia' : 'Catálogo de servicios' }}</span>
+        <h1>{{ isRenewal ? 'Renovar servicio' : 'Nuevo servicio' }}</h1>
+        <p>{{ isRenewal ? 'Actualiza los datos y prepara el siguiente periodo de tu servicio.' : 'Registra y organiza tus servicios, licencias y suscripciones.' }}</p>
+      </div>
+    </div>
+    <span class="header-label"><mat-icon>edit_note</mat-icon> {{ isRenewal ? 'Datos precargados' : 'Registro de servicio' }}</span>
+  </header>
+
+  <div class="loading-state" *ngIf="loading" role="status">
+    <mat-icon>hourglass_top</mat-icon> Cargando datos del servicio...
+  </div>
+  <div class="form-error" *ngIf="loadFailed" role="alert">{{ error }}</div>
+
+  <section class="renewal-summary" *ngIf="originalService && !loading && !loadFailed" aria-label="Servicio original">
+    <div class="summary-service">
+      <span class="summary-icon" aria-hidden="true"><mat-icon>autorenew</mat-icon></span>
+      <div>
+        <span class="summary-caption">SERVICIO A RENOVAR</span>
+        <h2>{{ originalService.nombre }}</h2>
+        <p>{{ originalService.proveedor }} · {{ originalService.tipo }}</p>
+      </div>
+    </div>
+    <div class="previous-period">
+      <span class="summary-caption">Vigencia anterior</span>
+      <div class="period-dates">
+        <span>{{ originalService.fechaInicio | date:'dd/MM/yyyy' }}</span>
+        <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+        <span>{{ originalService.fechaFin | date:'dd/MM/yyyy' }}</span>
+      </div>
+    </div>
+    <div class="renewal-notice">
+      <mat-icon aria-hidden="true">info_outline</mat-icon>
+      <p>Al guardar, se creará un nuevo registro y el anterior pasará al historial. Sus archivos adjuntos se conservarán en el periodo anterior.</p>
+    </div>
+  </section>
+
+  <section class="service-form-window" *ngIf="!loading && !loadFailed">
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="form-panels">
+        <section class="form-section" aria-labelledby="general-heading">
+          <div class="form-section-title">
+            <span class="section-icon" aria-hidden="true"><mat-icon>description</mat-icon></span>
+            <div><h2 id="general-heading">Información general</h2><p>Identifica el servicio y quién lo administra.</p></div>
+            <span class="section-number" aria-hidden="true">01</span>
+          </div>
+          <div class="form-grid">
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Nombre del servicio</mat-label>
+              <input matInput formControlName="nombre" placeholder="Ej. Correo corporativo">
+              <mat-error>Ingresa el nombre del servicio.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Proveedor</mat-label>
+              <input matInput formControlName="proveedor" placeholder="Ej. Google Workspace">
+              <mat-error>Ingresa el proveedor.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Tipo de servicio</mat-label>
+              <mat-select formControlName="tipo" placeholder="Selecciona un tipo">
+                <mat-option *ngFor="let tipo of tipos" [value]="tipo">{{ tipo }}</mat-option>
+              </mat-select>
+              <mat-error>Selecciona el tipo de servicio.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Responsable</mat-label>
+              <input matInput formControlName="responsable" placeholder="Área o persona responsable">
+            </mat-form-field>
+          </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="period-heading">
+          <div class="form-section-title">
+            <span class="section-icon" aria-hidden="true"><mat-icon>date_range</mat-icon></span>
+            <div><h2 id="period-heading">Vigencia y costo</h2><p>{{ isRenewal ? 'Define las fechas del nuevo periodo.' : 'Configura el periodo y el gasto mensual.' }}</p></div>
+            <span class="section-number" aria-hidden="true">02</span>
+          </div>
+          <div class="form-grid">
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Fecha de inicio</mat-label>
+              <input matInput [matDatepicker]="inicio" formControlName="fechaInicio" placeholder="Selecciona una fecha">
+              <mat-datepicker-toggle matIconSuffix [for]="inicio"></mat-datepicker-toggle>
+              <mat-datepicker #inicio></mat-datepicker>
+              <mat-error>Selecciona una fecha válida.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Fecha de fin</mat-label>
+              <input matInput [matDatepicker]="fin" formControlName="fechaFin" placeholder="Selecciona una fecha">
+              <mat-datepicker-toggle matIconSuffix [for]="fin"></mat-datepicker-toggle>
+              <mat-datepicker #fin></mat-datepicker>
+              <mat-error>Selecciona una fecha válida.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Costo mensual</mat-label>
+              <input matInput type="number" min="0" formControlName="costoMensual" placeholder="0.00">
+              <mat-error>Ingresa un costo igual o mayor que cero.</mat-error>
+            </mat-form-field>
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Divisa</mat-label>
+              <mat-select formControlName="divisa">
+                <mat-option value="PEN">PEN — Sol peruano</mat-option>
+                <mat-option value="USD">USD — Dólar estadounidense</mat-option>
+                <mat-option value="EUR">EUR — Euro</mat-option>
+                <mat-option value="MXN">MXN — Peso mexicano</mat-option>
+                <mat-option value="COP">COP — Peso colombiano</mat-option>
+                <mat-option value="CLP">CLP — Peso chileno</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+          <p class="section-tip"><mat-icon aria-hidden="true">update</mat-icon>El estado se actualizará automáticamente según la fecha de fin.</p>
+        </section>
+
+        <section class="form-section" aria-labelledby="reminder-heading">
+          <div class="form-section-title">
+            <span class="section-icon" aria-hidden="true"><mat-icon>notifications_none</mat-icon></span>
+            <div><h2 id="reminder-heading">Correos de recordatorio</h2><p>Personas que recibirán los avisos de vencimiento.</p></div>
+            <span class="section-number" aria-hidden="true">03</span>
+          </div>
+          <div class="email-row" *ngFor="let email of correos; let i = index; trackBy: trackByIndex">
+            <mat-form-field appearance="outline" floatLabel="always">
+              <mat-label>Correo {{ i + 1 }}</mat-label>
+              <input matInput type="email" [value]="correos[i]" (input)="correos[i] = $any($event.target).value" placeholder="nombre@empresa.com">
+            </mat-form-field>
+            <button mat-stroked-button class="email-add-btn" type="button" *ngIf="correoValido(i) && i === correos.length - 1" (click)="addNextEmail(i)" aria-label="Agregar otro correo">
+              <mat-icon>add</mat-icon>
+            </button>
+            <button mat-icon-button class="email-remove-btn" type="button" *ngIf="correos.length > 1" (click)="removeEmail(i)" [attr.aria-label]="'Eliminar correo ' + (i + 1)">
+              <mat-icon>remove_circle_outline</mat-icon>
+            </button>
+          </div>
+          <p class="section-tip"><mat-icon aria-hidden="true">add_circle_outline</mat-icon>Escribe un correo válido y pulsa + para añadir otro.</p>
+        </section>
+
+        <section class="form-section notes-section" aria-labelledby="notes-heading">
+          <div class="form-section-title">
+            <span class="section-icon" aria-hidden="true"><mat-icon>notes</mat-icon></span>
+            <div><h2 id="notes-heading">Notas y observaciones</h2><p>Información adicional para el seguimiento.</p></div>
+            <span class="section-number" aria-hidden="true">04</span>
+          </div>
+          <mat-form-field appearance="outline" floatLabel="always" class="full-width">
+            <mat-label>Notas (opcional)</mat-label>
+            <textarea matInput rows="4" formControlName="notas" placeholder="Condiciones del servicio, acuerdos o detalles importantes..."></textarea>
+          </mat-form-field>
+        </section>
+      </div>
+
+      <div class="form-error" *ngIf="error" role="alert">{{ error }}</div>
+      <footer class="form-page-actions">
+        <span class="action-note"><mat-icon aria-hidden="true">info_outline</mat-icon>{{ isRenewal ? 'Los cambios se guardarán en el nuevo periodo.' : 'Los campos con * son obligatorios.' }}</span>
+        <div class="action-buttons">
+          <button mat-stroked-button type="button" class="secondary-btn" [routerLink]="basePath">Cancelar</button>
+          <button mat-flat-button type="submit" class="primary-btn" [disabled]="saving || loading || loadFailed">
+            <mat-icon>{{ isRenewal ? 'autorenew' : 'save' }}</mat-icon>{{ saving ? 'Guardando...' : (isRenewal ? 'Crear renovación' : 'Crear servicio') }}
+          </button>
+        </div>
+      </footer>
+    </form>
+  </section>
+</section>

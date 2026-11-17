@@ -1,0 +1,17 @@
+<main class="api-docs-page">
+  <header class="api-docs-header">
+    <button mat-stroked-button type="button" (click)="goBack()">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      Volver
+    </button>
+    <div>
+      <p>Herramientas para usuarios autenticados</p>
+      <h1>Documentación de la API</h1>
+    </div>
+    <span class="api-docs-session"><mat-icon aria-hidden="true">lock</mat-icon> Sesión protegida</span>
+  </header>
+
+  <p class="api-docs-status" role="status" *ngIf="loading">Cargando documentación…</p>
+  <p class="api-docs-error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <section id="api-swagger-ui" #swaggerContainer class="api-docs-viewer" [hidden]="loading || !!errorMessage" aria-label="Swagger UI"></section>
+</main>

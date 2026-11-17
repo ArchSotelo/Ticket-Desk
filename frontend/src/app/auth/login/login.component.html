@@ -1,0 +1,50 @@
+<main class="auth-page">
+  <div class="auth-shell">
+    <section class="auth-story" aria-label="ServiceDesk Pro, tu mesa de ayuda">
+      <div class="auth-brand"><span class="auth-brand-mark"><mat-icon aria-hidden="true">confirmation_number</mat-icon></span><span>ServiceDesk <strong>Pro</strong></span></div>
+      <div class="auth-story-copy">
+        <p class="auth-eyebrow">Tu mesa de ayuda</p>
+        <h2>Cada solicitud,<br>una respuesta<br><span>más clara.</span></h2>
+        <p class="auth-story-description">Gestiona solicitudes, conecta a tu equipo y da seguimiento a cada caso desde un solo lugar.</p>
+        <ul class="auth-benefits">
+          <li><span><mat-icon aria-hidden="true">description</mat-icon></span>Solicitudes organizadas</li>
+          <li><span><mat-icon aria-hidden="true">bar_chart</mat-icon></span>Seguimiento de cada caso</li>
+          <li><span><mat-icon aria-hidden="true">groups</mat-icon></span>Un espacio para tu equipo</li>
+        </ul>
+      </div>
+      <div class="auth-artwork" aria-hidden="true">
+        <div class="ticket-ghost ghost-back"></div><div class="ticket-ghost ghost-middle"></div>
+        <div class="ticket-preview">
+          <div class="ticket-preview-heading"><span>Solicitud de soporte</span><span class="ticket-state"><i></i>En proceso</span></div>
+          <div class="ticket-lines"><span></span><span></span></div>
+          <div class="ticket-progress"><span></span><i></i><i></i><i></i></div>
+          <div class="ticket-people"><span><mat-icon>person</mat-icon></span><span><mat-icon>person</mat-icon></span><span><mat-icon>person</mat-icon></span><span><mat-icon>add</mat-icon></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-panel" aria-labelledby="auth-heading">
+      <div class="auth-tools">
+        <div class="auth-mobile-brand"><mat-icon aria-hidden="true">confirmation_number</mat-icon><span>ServiceDesk <strong>Pro</strong></span></div>
+        <button class="auth-theme-toggle" type="button" (click)="toggleTheme()" [attr.aria-label]="isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'">
+          <mat-icon aria-hidden="true">{{ isDarkMode ? 'light_mode' : 'dark_mode' }}</mat-icon><span>{{ isDarkMode ? 'Modo claro' : 'Modo oscuro' }}</span>
+        </button>
+      </div>
+      <div class="auth-form-area">
+        <header class="auth-form-heading"><span class="auth-form-mark"><mat-icon aria-hidden="true">confirmation_number</mat-icon></span><h1 id="auth-heading">Bienvenido de nuevo</h1><p>Ingresa a tu cuenta para continuar.</p></header>
+        <p class="auth-notice" role="status" *ngIf="passwordUpdated">Contraseña actualizada. Inicia sesión con tu nueva contraseña.</p>
+        <form (ngSubmit)="onLogin()" #loginForm="ngForm" novalidate [attr.aria-busy]="loading">
+          <div class="auth-field"><label for="auth-username">Usuario</label><div class="auth-input-wrap"><mat-icon aria-hidden="true">person_outline</mat-icon><input id="auth-username" name="username" [(ngModel)]="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="Ingresa tu usuario" required [disabled]="loading"></div></div>
+          <div class="auth-field"><label for="auth-password">Contraseña</label><div class="auth-input-wrap password-wrap"><mat-icon aria-hidden="true">lock_outline</mat-icon><input id="auth-password" name="password" [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="password" autocomplete="current-password" placeholder="Ingresa tu contraseña" required [disabled]="loading"><button class="auth-password-toggle" type="button" (click)="hidePassword = !hidePassword" [attr.aria-label]="hidePassword ? 'Mostrar contraseña' : 'Ocultar contraseña'" [attr.aria-pressed]="!hidePassword"><mat-icon aria-hidden="true">{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon></button></div></div>
+          <div class="auth-error" role="alert" *ngIf="errorMessage"><mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ errorMessage }}</span></div>
+          <button class="auth-submit" type="submit" [disabled]="loading || !loginForm.valid || !username.trim()"><span>{{ loading ? 'Iniciando sesión…' : 'Iniciar sesión' }}</span><mat-icon aria-hidden="true" [class.auth-spinning]="loading">{{ loading ? 'sync' : 'arrow_forward' }}</mat-icon></button>
+        </form>
+        <p class="auth-helper">Usa las credenciales proporcionadas por tu administrador.</p>
+      </div>
+      <div class="auth-footer">
+        <span>ServiceDesk Pro · Mesa de ayuda</span>
+        <app-brand-footer class="login-brand-footer"></app-brand-footer>
+      </div>
+    </section>
+  </div>
+</main>

@@ -1,0 +1,85 @@
+<section class="kb-workspace" aria-labelledby="kb-heading">
+  <header class="kb-heading">
+    <div><p class="kb-eyebrow">Centro de ayuda</p><h1 id="kb-heading">Base de conocimiento</h1><p>{{ canManage ? 'Encuentra soluciones y comparte el conocimiento del equipo.' : 'Encuentra guías y soluciones para resolver tus consultas.' }}</p></div>
+    <button *ngIf="canManage" class="kb-button primary" type="button" (click)="abrirNuevo()"><mat-icon aria-hidden="true">add</mat-icon>Nuevo artículo</button>
+  </header>
+  <div class="kb-feedback success" role="status" *ngIf="successMessage"><mat-icon aria-hidden="true">check_circle_outline</mat-icon><span>{{ successMessage }}</span><button class="kb-icon-button" type="button" aria-label="Cerrar aviso" (click)="successMessage = ''"><mat-icon>close</mat-icon></button></div>
+  <form class="kb-surface kb-searchbar" (ngSubmit)="buscar()">
+    <div class="kb-field kb-search"><label class="kb-sr-only" for="kb-search">Buscar por título o contenido</label><mat-icon aria-hidden="true">search</mat-icon><input id="kb-search" type="search" name="search" [(ngModel)]="busqueda" (ngModelChange)="buscar()" placeholder="Buscar por título o contenido"></div>
+    <div class="kb-field kb-category-filter"><label class="kb-sr-only" for="kb-category-filter">Filtrar por categoría</label><select id="kb-category-filter" name="category" [(ngModel)]="categoryFilter" (ngModelChange)="buscar()"><option [ngValue]="null">Todas las categorías</option><option *ngFor="let category of categoryChips; trackBy: trackCategory" [ngValue]="category.id">{{ category.nombre }}</option></select></div>
+    <span class="kb-result-count" aria-live="polite">{{ loading ? 'Buscando…' : totalElements + (totalElements === 1 ? ' artículo' : ' artículos') }}</span>
+  </form>
+  <div class="kb-feedback error" role="alert" *ngIf="error"><mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ error }}</span><button class="kb-button secondary" type="button" (click)="cargarCatalogo()">Reintentar artículos</button></div>
+  <div class="kb-status" role="status" *ngIf="loading">Cargando artículos…</div>
+  <div class="kb-layout" [class.has-detail]="articuloSeleccionado" *ngIf="!loading && !error">
+    <section class="kb-surface kb-directory" aria-label="Listado de artículos">
+      <nav class="kb-chips" aria-label="Categorías de artículos">
+        <button type="button" [class.active]="categoryFilter === null" [attr.aria-pressed]="categoryFilter === null" (click)="setCategory(null)">Todos</button>
+        <button type="button" *ngFor="let category of categoryChips; trackBy: trackCategory" [class.active]="categoryFilter === category.id" [attr.aria-pressed]="categoryFilter === category.id" (click)="setCategory(category.id)"><mat-icon aria-hidden="true">{{ categoryIcon(category.nombre) }}</mat-icon>{{ category.nombre }}</button>
+      </nav>
+      <div class="kb-article-list">
+        <article class="kb-article-row" *ngFor="let art of articulos; trackBy: trackArticle" [class.selected]="articuloSeleccionado?.id === art.id">
+          <span class="kb-category-icon" aria-hidden="true"><mat-icon>{{ categoryIcon(art.categoriaNombre) }}</mat-icon></span>
+          <div class="kb-article-copy"><div class="kb-row-label"><span class="kb-category-name">{{ art.categoriaNombre }}</span><span class="kb-private-badge" *ngIf="!art.esPublico"><mat-icon aria-hidden="true">lock_outline</mat-icon>Interno</span></div>
+            <h2><button type="button" class="kb-title-link" [id]="'kb-article-' + art.id" (click)="verArticulo(art)" [attr.aria-expanded]="articuloSeleccionado?.id === art.id" aria-controls="kb-article-detail">{{ art.titulo }}</button></h2>
+            <p class="kb-excerpt">{{ art.excerpt }}</p>
+            <div class="kb-article-meta"><span><mat-icon aria-hidden="true">person_outline</mat-icon>{{ art.autorNombre || 'Autor no disponible' }}</span><span><mat-icon aria-hidden="true">visibility</mat-icon>{{ art.vistas || 0 }} {{ art.vistas === 1 ? 'vista' : 'vistas' }}</span></div>
+          </div>
+          <button type="button" class="kb-open-link" (click)="verArticulo(art)" [attr.aria-label]="'Leer artículo: ' + art.titulo"><span>Ver artículo</span><mat-icon aria-hidden="true">arrow_forward</mat-icon></button>
+        </article>
+      </div>
+      <div class="kb-empty" *ngIf="!articulos.length"><mat-icon aria-hidden="true">menu_book</mat-icon><h2>{{ busqueda || categoryFilter ? 'No encontramos artículos con estos filtros' : 'Todavía no hay artículos' }}</h2><p>{{ busqueda || categoryFilter ? 'Prueba con otras palabras o cambia la categoría.' : canManage ? 'Crea el primer artículo para compartir una solución con el equipo.' : 'Los artículos publicados por soporte aparecerán aquí.' }}</p><button *ngIf="busqueda || categoryFilter" class="kb-button secondary" type="button" (click)="clearFilters()">Limpiar filtros</button></div>
+      <footer class="kb-pagination" *ngIf="totalElements > 0">
+        <p>Mostrando <strong>{{ firstItemIndex }}–{{ lastItemIndex }}</strong> de {{ totalElements }}</p>
+        <div class="kb-pagination-controls"><label for="kb-size">Filas</label><select id="kb-size" [ngModel]="pageSize" (ngModelChange)="cambiarTamanoPagina($event)"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select>
+          <nav class="kb-pager" aria-label="Páginas de artículos"><button type="button" aria-label="Página anterior" [disabled]="pageIndex === 0" (click)="irAPagina(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button><button type="button" *ngFor="let page of visiblePages()" [class.active]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" (click)="irAPagina(page)">{{ page + 1 }}</button><button type="button" aria-label="Página siguiente" [disabled]="pageIndex >= totalPages - 1" (click)="irAPagina(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button></nav>
+        </div>
+      </footer>
+    </section>
+
+    <article class="kb-surface kb-detail" id="kb-article-detail" tabindex="-1" *ngIf="articuloSeleccionado as art" aria-labelledby="kb-detail-title" (keydown.escape)="closeDetailAndFocus()" [attr.aria-busy]="loadingArticle">
+      <header class="kb-detail-tools"><span class="kb-category-badge"><mat-icon aria-hidden="true">{{ categoryIcon(art.categoriaNombre) }}</mat-icon>{{ art.categoriaNombre }}</span>
+        <div class="kb-detail-actions"><button *ngIf="canManage" class="kb-button secondary" type="button" (click)="abrirEdicion(art)" [disabled]="loadingArticle || !!detailError || deleting"><mat-icon aria-hidden="true">edit</mat-icon>Editar</button><button *ngIf="canManage" class="kb-icon-button delete-button" type="button" (click)="eliminar(art)" [disabled]="deleting || loadingArticle" aria-label="Eliminar artículo"><mat-icon aria-hidden="true">delete_outline</mat-icon></button><button class="kb-icon-button" type="button" aria-label="Cerrar artículo" (click)="closeDetailAndFocus()"><mat-icon aria-hidden="true">close</mat-icon></button></div>
+      </header>
+      <h2 id="kb-detail-title">{{ art.titulo }}</h2><p class="kb-published">Publicado el {{ date(art.fechaCreacion) }} · {{ art.autorNombre || 'Autor no disponible' }}</p><p class="kb-internal-note" *ngIf="!art.esPublico"><mat-icon aria-hidden="true">lock_outline</mat-icon>Artículo interno, no visible para los usuarios.</p>
+      <div class="kb-status" role="status" *ngIf="loadingArticle">Cargando contenido…</div>
+      <div class="kb-feedback error" role="alert" *ngIf="detailError"><span>{{ detailError }}</span><button class="kb-button secondary" type="button" (click)="verArticulo(art)">Reintentar detalle</button></div>
+      <div class="kb-rich kb-reading-body" *ngIf="!loadingArticle && !detailError" [innerHTML]="selectedHtml"></div>
+    </article>
+  </div>
+
+  <dialog *ngIf="canManage" #articleDialog class="kb-workspace kb-dialog" aria-labelledby="kb-editor-title" aria-describedby="kb-editor-description" (cancel)="onDialogCancel($event)">
+    <header class="kb-dialog-heading"><div><h2 id="kb-editor-title">{{ editingId ? 'Editar artículo' : 'Nuevo artículo' }}</h2><p id="kb-editor-description">Documenta una solución clara y fácil de consultar.</p></div><button class="kb-icon-button" type="button" aria-label="Cerrar editor" [disabled]="saving" (click)="cerrarEditor()"><mat-icon aria-hidden="true">close</mat-icon></button></header>
+    <form (ngSubmit)="guardarArticulo()" novalidate [attr.aria-busy]="saving">
+      <div class="kb-editor-layout">
+        <fieldset class="kb-editor-fields" [disabled]="saving">
+          <legend class="kb-sr-only">Datos y contenido del artículo</legend>
+          <div class="kb-field"><label for="kb-editor-article-title">Título *</label><input id="kb-editor-article-title" autofocus name="title" [(ngModel)]="editor.titulo" required maxlength="200" placeholder="Escribe un título claro y específico" [attr.aria-invalid]="touched && !editor.titulo.trim()" [attr.aria-describedby]="touched && !editor.titulo.trim() ? 'kb-title-error' : null"><p id="kb-title-error" class="kb-field-error" *ngIf="touched && !editor.titulo.trim()">Ingresa un título para el artículo.</p></div>
+          <div class="kb-field"><label for="kb-editor-category">Categoría *</label><select id="kb-editor-category" name="categoryId" [(ngModel)]="editor.categoriaId" required [attr.aria-invalid]="touched && !editor.categoriaId"><option [ngValue]="null">Selecciona una categoría</option><option *ngFor="let category of categorias" [ngValue]="category.id">{{ category.nombre }}</option></select><p class="kb-field-error" *ngIf="touched && !editor.categoriaId">Selecciona una categoría.</p></div>
+          <div class="kb-feedback error" role="alert" *ngIf="categoriesError"><span>{{ categoriesError }}</span><button class="kb-button secondary" type="button" (click)="cargarCategorias()" [disabled]="loadingCategories">Reintentar categorías</button></div>
+          <p class="kb-helper" role="status" *ngIf="loadingCategories">Cargando categorías…</p>
+          <div class="kb-content-heading"><label id="kb-content-label">Contenido *</label><div class="kb-editor-modes" aria-label="Modo de edición"><button type="button" [class.active]="editorMode === 'visual'" [attr.aria-pressed]="editorMode === 'visual'" (click)="setEditorMode('visual')">Visual</button><button type="button" [class.active]="editorMode === 'markdown'" [attr.aria-pressed]="editorMode === 'markdown'" (click)="setEditorMode('markdown')">Markdown</button></div></div>
+          <div class="kb-editor-box" [hidden]="editorMode !== 'visual'">
+            <div class="kb-format-toolbar" role="toolbar" aria-label="Formato del contenido">
+              <button type="button" aria-label="Negrita" title="Negrita" (mousedown)="$event.preventDefault()" (click)="format('bold')"><mat-icon>format_bold</mat-icon></button>
+              <button type="button" aria-label="Cursiva" title="Cursiva" (mousedown)="$event.preventDefault()" (click)="format('italic')"><mat-icon>format_italic</mat-icon></button><span class="kb-toolbar-divider"></span>
+              <button type="button" aria-label="Insertar título" title="Título" (mousedown)="$event.preventDefault()" (click)="format('formatBlock', 'h2')">Título</button>
+              <button type="button" aria-label="Párrafo" title="Párrafo" (mousedown)="$event.preventDefault()" (click)="format('formatBlock', 'p')"><mat-icon>format_align_left</mat-icon></button><span class="kb-toolbar-divider"></span>
+              <button type="button" aria-label="Lista numerada" title="Lista numerada" (mousedown)="$event.preventDefault()" (click)="format('insertOrderedList')"><mat-icon>format_list_numbered</mat-icon></button>
+              <button type="button" aria-label="Lista con viñetas" title="Lista con viñetas" (mousedown)="$event.preventDefault()" (click)="format('insertUnorderedList')"><mat-icon>format_list_bulleted</mat-icon></button>
+              <button type="button" aria-label="Insertar enlace" title="Insertar enlace" [attr.aria-expanded]="linkOpen" (mousedown)="$event.preventDefault()" (click)="linkOpen = !linkOpen; linkError = ''"><mat-icon>link</mat-icon></button>
+            </div>
+            <div class="kb-link-form" *ngIf="linkOpen"><label for="kb-link-url">URL del enlace</label><input id="kb-link-url" type="url" name="linkUrl" [(ngModel)]="linkUrl" placeholder="https://ejemplo.com"><div><button class="kb-button secondary" type="button" (click)="linkOpen = false">Cancelar enlace</button><button class="kb-button primary" type="button" (click)="addLink()">Insertar</button></div><p class="kb-field-error" role="alert" *ngIf="linkError">{{ linkError }}</p></div>
+            <div #visualEditor class="kb-rich kb-visual-editor" [attr.contenteditable]="!saving" role="textbox" aria-labelledby="kb-content-label" aria-multiline="true" data-placeholder="Describe el problema y explica la solución paso a paso…" [innerHTML]="editorHtml" (input)="onVisualInput()" (paste)="pastePlain($event)" (drop)="$event.preventDefault()"></div>
+          </div>
+          <textarea class="kb-markdown-editor" *ngIf="editorMode === 'markdown'" name="markdown" [(ngModel)]="editor.contenidoMarkdown" (ngModelChange)="onMarkdownInput()" aria-labelledby="kb-content-label" rows="12" placeholder="## Problema&#10;&#10;Describe el problema…&#10;&#10;## Solución&#10;&#10;1. Explica el primer paso"></textarea>
+          <p class="kb-field-error" *ngIf="touched && !validEditor && editor.titulo.trim() && editor.categoriaId && !previewHtml">Escribe el contenido del artículo.</p>
+          <p class="kb-helper">Usa títulos y pasos para facilitar la lectura. Puedes conservar o editar el Markdown original.</p>
+        </fieldset>
+        <aside class="kb-preview" aria-labelledby="kb-preview-heading"><h3 id="kb-preview-heading">Vista previa</h3><p class="kb-helper">Así lo verán los usuarios.</p><div class="kb-preview-article"><span class="kb-category-badge"><mat-icon aria-hidden="true">{{ categoryIcon(editorCategoryName) }}</mat-icon>{{ editorCategoryName }}</span><h2>{{ editor.titulo.trim() || 'Título del artículo' }}</h2><div class="kb-rich" [innerHTML]="previewHtml"></div><p class="kb-preview-placeholder" *ngIf="!previewHtml">El contenido aparecerá aquí mientras escribes.</p></div></aside>
+      </div>
+      <div class="kb-feedback error kb-save-error" role="alert" *ngIf="saveError"><mat-icon aria-hidden="true">error_outline</mat-icon><span>{{ saveError }}</span></div>
+      <footer class="kb-dialog-footer"><label class="kb-visibility"><input type="checkbox" name="isPublic" [(ngModel)]="editor.esPublico" [disabled]="saving"><span><strong>Visible para los usuarios</strong><small>{{ editor.esPublico ? 'El artículo estará disponible en la base de conocimiento.' : 'El artículo será interno para el equipo de soporte.' }}</small></span></label><div class="kb-dialog-actions"><button class="kb-button secondary" type="button" (click)="cerrarEditor()" [disabled]="saving">Cancelar</button><button class="kb-button primary" type="submit" [disabled]="saving"><mat-icon aria-hidden="true">save</mat-icon>{{ saving ? 'Guardando…' : 'Guardar artículo' }}</button></div></footer>
+    </form>
+  </dialog>
+</section>

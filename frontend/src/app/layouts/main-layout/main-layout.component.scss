@@ -1,0 +1,93 @@
+    @use '../responsive-layout' as layout;
+    .layout-wrapper { @include layout.shell; }
+    .layout-body {
+      @include layout.body;
+    }
+    .main-content {
+      @include layout.main;
+      background: var(--bg-surface);
+      border: 1px solid rgba(219, 228, 240, 0.95);
+      border-radius: var(--radius-lg);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow-md);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(96, 165, 250, 0.58) transparent;
+    }
+
+    .main-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .main-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .main-content::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: rgba(96, 165, 250, 0.58);
+    }
+
+    .main-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(147, 197, 253, 0.82);
+    }
+    .portal-hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1rem;
+      background:
+        radial-gradient(circle at top right, rgba(21, 94, 239, 0.12), transparent 26%),
+        linear-gradient(135deg, rgba(21, 94, 239, 0.06), rgba(14, 165, 233, 0.1));
+      border: 1px solid rgba(21, 94, 239, 0.12);
+    }
+    .hero-copy h2 {
+      margin: 0.15rem 0 0.35rem;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+    }
+    .hero-copy p {
+      margin: 0;
+      color: var(--text-muted);
+      max-width: 760px;
+      line-height: 1.65;
+    }
+    .eyebrow {
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .hero-actions a {
+      border-radius: 14px;
+      white-space: nowrap;
+    }
+    .hero-bell {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      background: rgba(21, 94, 239, 0.08);
+      color: var(--primary-color);
+    }
+
+    .sidebar-backdrop { @include layout.backdrop; }
+    @media (max-width: 960px) {
+
+      .portal-hero {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .hero-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }

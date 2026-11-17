@@ -1,0 +1,206 @@
+<div class="ticket-detail-page">
+    <div class="staff-detail-workspace">
+      <button type="button" class="staff-back-link" (click)="goBack()"><mat-icon>arrow_back</mat-icon>Volver a tickets</button>
+      <ng-container *ngIf="ticket; else loadingState">
+        <header class="staff-detail-heading">
+          <div>
+            <p class="staff-eyebrow">Tickets <span aria-hidden="true">/</span> {{ ticket.codigo }}</p>
+            <h1>{{ ticket.titulo }}</h1>
+            <p class="staff-created">Creado el {{ formatDate(ticket.fechaCreacion) }} · {{ ticket.fechaCreacion | date:'HH:mm' }}</p>
+          </div>
+          <div class="staff-ticket-tags">
+            <span class="detail-role-chip"><mat-icon>{{ mode === 'client' ? 'person_outline' : mode === 'technician' ? 'engineering' : 'admin_panel_settings' }}</mat-icon>{{ roleLabel }}</span>
+            <span class="staff-tone-badge" [attr.data-tone]="statusTone" [attr.aria-label]="'Estado: ' + ticket.estadoNombre"><i aria-hidden="true"></i>{{ ticket.estadoNombre }}</span>
+            <span class="staff-tone-badge" [attr.data-tone]="priorityTone" [attr.aria-label]="'Prioridad: ' + ticket.prioridadNombre"><i aria-hidden="true"></i>{{ ticket.prioridadNombre }}</span>
+          </div>
+        </header>
+        <p class="staff-feedback staff-feedback-error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</p>
+        <p class="staff-feedback staff-feedback-success" role="status" *ngIf="successMessage">{{ successMessage }}</p>
+        <div class="staff-detail-grid">
+          <main class="staff-detail-primary" aria-label="Contenido del ticket">
+            <section class="staff-detail-card staff-activity-card">
+              <div class="staff-detail-tabs" role="tablist" aria-label="Secciones del ticket">
+                <button type="button" role="tab" id="staff-conversation-tab" aria-controls="staff-conversation-panel" [attr.aria-selected]="activeTab === 'conversation'" (keydown)="onTabKeydown($event)" [attr.tabindex]="activeTab === 'conversation' ? 0 : -1" (click)="selectTab('conversation')"><mat-icon>chat_bubble_outline</mat-icon>Conversación<span>{{ ticket.comentarios?.length || 0 }}</span></button>
+                <button type="button" role="tab" id="staff-attachments-tab" aria-controls="staff-attachments-panel" [attr.aria-selected]="activeTab === 'attachments'" (keydown)="onTabKeydown($event)" [attr.tabindex]="activeTab === 'attachments' ? 0 : -1" (click)="selectTab('attachments')"><mat-icon>attach_file</mat-icon>Adjuntos<span>{{ ticket.attachments.length || 0 }}</span></button>
+                <button type="button" role="tab" id="staff-history-tab" aria-controls="staff-history-panel" [attr.aria-selected]="activeTab === 'history'" (keydown)="onTabKeydown($event)" [attr.tabindex]="activeTab === 'history' ? 0 : -1" (click)="selectTab('history')"><mat-icon>history</mat-icon>Actividad</button>
+              </div>
+              <div class="staff-tab-panel" id="staff-conversation-panel" role="tabpanel" aria-labelledby="staff-conversation-tab" [hidden]="activeTab !== 'conversation'">
+                <section class="staff-description-section" aria-labelledby="staff-description-heading">
+                  <h2 id="staff-description-heading">Descripción de la solicitud</h2>
+                  <p>{{ ticket.descripcion || 'Sin descripción registrada.' }}</p>
+                  <div class="detail-file-chips" *ngIf="initialAttachments.length">
+                    <button type="button" *ngFor="let file of initialAttachments | slice:0:2; trackBy: trackAttachment" (click)="openAttachment(file)" [attr.aria-label]="'Ver ' + file.nombreOriginal">
+                      <mat-icon>{{ isImage(file) ? 'image' : icon(file) }}</mat-icon><span><strong>{{ file.nombreOriginal }}</strong><small>{{ formatBytes(file.tamanoBytes) }}</small></span><mat-icon>open_in_new</mat-icon>
+                    </button>
+                    <button type="button" *ngIf="initialAttachments.length > 2" (click)="selectTab('attachments')">Ver todos ({{ initialAttachments.length }})</button>
+                  </div>
+                </section>
+                <div class="staff-conversation-thread" role="region" aria-label="Historial de mensajes" tabindex="0" *ngIf="ticket.comentarios?.length; else staffEmptyConversation">
+                  <article class="staff-thread-message" *ngFor="let comment of ticket.comentarios; trackBy: trackComment" [ngClass]="'staff-' + getCommentClass(comment)">
+                    <span class="staff-person-avatar" aria-hidden="true">{{ initials(commentAuthor(comment)) }}</span>
+                    <div class="staff-message-content">
+                      <header><strong>{{ commentAuthor(comment) }}</strong><span class="staff-role-label">{{ getCommentLabel(comment) }}</span><time [attr.datetime]="comment.fechaCreacion">{{ formatDateTime(comment.fechaCreacion) }}</time></header>
+                      <div class="staff-message-body"><span class="detail-internal-label" *ngIf="comment.esInterno"><mat-icon>lock</mat-icon>Nota interna · Solo personal</span><div [innerHTML]="comment.contenido | ticketMessage"></div></div>
+                      <div class="detail-message-files" *ngIf="messageAttachments.get(comment.id) as files">
+                        <button type="button" *ngFor="let file of files; trackBy: trackAttachment" (click)="openAttachment(file)" [attr.aria-label]="'Ver ' + file.nombreOriginal">
+                          <img *ngIf="isImage(file); else documentIcon" [src]="preview(file)" alt="" loading="lazy">
+                          <ng-template #documentIcon><mat-icon>{{ icon(file) }}</mat-icon></ng-template>
+                          <span><strong>{{ file.nombreOriginal }}</strong><small>{{ formatBytes(file.tamanoBytes) }}</small></span><mat-icon>open_in_new</mat-icon>
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+                <ng-template #staffEmptyConversation><div class="staff-empty-state"><mat-icon>forum</mat-icon><h3>Aún no hay mensajes</h3><p>{{ mode === 'client' ? 'El equipo de soporte responderá por este medio.' : 'Envía una respuesta para iniciar la conversación.' }}</p></div></ng-template>
+                <div class="staff-ticket-closed" role="status" *ngIf="isClosed(); else staffComposer"><mat-icon>lock_outline</mat-icon><div><strong>Ticket cerrado</strong><p>Este ticket está cerrado y no se pueden enviar más comentarios.</p></div></div>
+                <ng-template #staffComposer>
+                  <form class="staff-reply-composer" (ngSubmit)="sendResponse()" [attr.aria-busy]="sending">
+                    <div class="detail-response-modes" *ngIf="mode !== 'client'; else clientResponseLabel" role="group" aria-label="Visibilidad de la respuesta">
+                      <button type="button" [attr.aria-pressed]="responseMode === 'public'" [disabled]="sending || pendingAttachmentCommentId !== null" (click)="setResponseMode('public')"><mat-icon>chat_bubble_outline</mat-icon>Respuesta al cliente</button>
+                      <button type="button" [attr.aria-pressed]="responseMode === 'internal'" [disabled]="sending || pendingAttachmentCommentId !== null" (click)="setResponseMode('internal')"><mat-icon>lock_outline</mat-icon>Nota interna</button>
+                    </div>
+                    <ng-template #clientResponseLabel><label class="detail-reply-title" for="staff-ticket-response">Tu respuesta</label></ng-template>
+                    <label class="detail-sr-only" for="staff-ticket-response" *ngIf="mode !== 'client'">{{ responseMode === 'internal' ? 'Nota interna' : 'Respuesta al cliente' }}</label>
+                    <p id="staff-reply-help">{{ responseMode === 'internal' && mode !== 'client' ? 'Solo el personal de soporte podrá leer esta nota. Los adjuntos se envían en una respuesta pública.' : mode === 'client' ? 'Comparte más detalles con el equipo de soporte.' : 'Esta respuesta será visible para el cliente.' }}</p>
+                    <app-rich-reply-editor editorId="staff-ticket-response" [value]="response" (valueChange)="response = $event" [disabled]="sending || savingState || assigning || pendingAttachmentCommentId !== null" [label]="responseMode === 'internal' ? 'Nota interna' : 'Tu respuesta'" describedBy="staff-reply-help"></app-rich-reply-editor>
+                    <div class="staff-pending-files" *ngIf="responseFiles.length">
+                      <p>{{ responseFiles.length }} archivo(s) para enviar</p>
+                      <div class="staff-pending-file" *ngFor="let file of responseFiles; let i = index">
+                        <mat-icon>attach_file</mat-icon><div><strong>{{ file.name }}</strong><span>{{ formatBytes(file.size) }}</span></div>
+                        <button type="button" class="staff-icon-button" [disabled]="sending" [attr.aria-label]="'Quitar ' + file.name" (click)="removeFile(i)"><mat-icon>close</mat-icon></button>
+                      </div>
+                    </div>
+                    <button *ngIf="pendingAttachmentCommentId && responseFiles.length" type="button" class="staff-outline-button" [disabled]="sending" (click)="retryAttachments()">Reintentar adjuntos</button>
+                    <div class="staff-composer-toolbar">
+                      <div class="staff-composer-buttons">
+                        <button type="button" class="staff-outline-button" [disabled]="sending || savingState || assigning || responseMode === 'internal'" (click)="staffFileInput.click()"><mat-icon>attach_file</mat-icon>Adjuntar archivo</button>
+                        <input #staffFileInput type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.log,.csv" multiple hidden [disabled]="sending || savingState || assigning || responseMode === 'internal'" (change)="selectFiles($event)">
+                      </div>
+                      <div class="staff-composer-buttons staff-submit-buttons">
+                        <button type="button" class="staff-outline-button" [disabled]="sending" (click)="goBack()">Cancelar</button>
+                        <button type="submit" class="staff-primary-button" [disabled]="pendingAttachmentCommentId !== null || !response.trim() || sending || savingState || assigning || (responseMode === 'internal' && responseFiles.length > 0)"><mat-icon>send</mat-icon>{{ sending ? 'Enviando…' : responseMode === 'internal' ? 'Guardar nota interna' : 'Enviar respuesta' }}</button>
+                      </div>
+                    </div>
+                  </form>
+                </ng-template>
+              </div>
+              <div class="staff-tab-panel" id="staff-attachments-panel" role="tabpanel" aria-labelledby="staff-attachments-tab" [hidden]="activeTab !== 'attachments'">
+                <div class="staff-panel-heading"><h2>Archivos adjuntos</h2><p>Documentos e imágenes de este ticket. Selecciona un archivo para previsualizarlo.</p></div>
+                <div class="staff-attachment-list" *ngIf="ticket.attachments?.length; else staffEmptyAttachments">
+                  <button type="button" class="staff-attachment" *ngFor="let file of ticket.attachments; trackBy: trackAttachment" (click)="openAttachment(file)" [attr.aria-label]="'Ver ' + file.nombreOriginal">
+                    <img *ngIf="isImage(file); else staffAttachmentIcon" [src]="preview(file)" [alt]="file.nombreOriginal">
+                    <ng-template #staffAttachmentIcon><span class="staff-attachment-icon"><mat-icon>{{ icon(file) }}</mat-icon></span></ng-template>
+                    <span class="staff-attachment-info"><strong>{{ file.nombreOriginal }}</strong><small>{{ formatBytes(file.tamanoBytes) }} · {{ isImage(file) ? 'Imagen' : isPdf(file) ? 'PDF' : 'Archivo' }}</small><small *ngIf="file.usuarioCreacionNombre">Añadido por {{ file.usuarioCreacionNombre }} · {{ formatDateTime(file.fechaCreacion) }}</small></span>
+                    <span class="staff-attachment-open"><mat-icon>visibility</mat-icon>Ver archivo</span>
+                  </button>
+                </div>
+                <ng-template #staffEmptyAttachments><div class="staff-empty-state"><mat-icon>insert_drive_file</mat-icon><h3>Sin archivos adjuntos</h3><p>{{ isClosed() ? 'No se adjuntaron archivos en este ticket.' : 'Puedes añadir imágenes y documentos al enviar una respuesta.' }}</p></div></ng-template>
+              </div>
+              <div class="staff-tab-panel" id="staff-history-panel" role="tabpanel" aria-labelledby="staff-history-tab" [hidden]="activeTab !== 'history'">
+                <div class="staff-panel-heading"><h2>Historial de cambios</h2><p>Registro de las actualizaciones realizadas en este ticket.</p></div>
+                <ol class="staff-history-timeline" *ngIf="ticket.historialCambios?.length; else staffEmptyHistory">
+                  <li *ngFor="let change of ticket.historialCambios">
+                    <header><strong>{{ change.campoModificado }}</strong><time [attr.datetime]="change.fechaCambio">{{ formatDateTime(change.fechaCambio) }}</time></header>
+                    <p>{{ change.usuarioNombre || 'Usuario no disponible' }}</p>
+                    <div class="staff-history-values"><span>{{ change.valorAnterior || 'Sin valor' }}</span><mat-icon aria-label="cambió a">arrow_forward</mat-icon><span>{{ change.valorNuevo || 'Sin valor' }}</span></div>
+                  </li>
+                </ol>
+                <ng-template #staffEmptyHistory><div class="staff-empty-state"><mat-icon>history</mat-icon><h3>Sin cambios registrados</h3><p>Las actualizaciones del ticket aparecerán aquí.</p></div></ng-template>
+              </div>
+            </section>
+          </main>
+          <aside class="staff-detail-secondary" aria-label="Seguimiento e información del ticket">
+            <section class="staff-detail-card detail-management" *ngIf="mode !== 'client'; else clientTracking" aria-labelledby="detail-management-heading">
+              <h2 id="detail-management-heading"><mat-icon>settings</mat-icon>{{ mode === 'admin' ? 'Administración del ticket' : 'Atención del ticket' }}</h2>
+              <div class="staff-management-field">
+                <label for="staff-ticket-state">Estado</label>
+                <select id="staff-ticket-state" [(ngModel)]="selectedStateCode" [disabled]="!canChangeState || statesLoading || !!statesError || savingState || assigning || sending">
+                  <option *ngIf="!states.length || !hasCurrentStateOption" [value]="ticket.estadoCodigo">{{ ticket.estadoNombre }}</option>
+                  <option *ngFor="let state of states" [value]="state.codigo">{{ state.nombre }}</option>
+                </select>
+                <p class="staff-catalog-error" role="alert" *ngIf="statesError">{{ statesError }} <button type="button" (click)="loadStates()">Reintentar</button></p>
+                <p *ngIf="!canChangeState">Solo un administrador puede reabrir un ticket cerrado.</p>
+              </div>
+              <div class="staff-assignment" *ngIf="canAssign; else readonlyTechnician">
+                <label for="staff-ticket-technician">Técnico asignado</label>
+                <select id="staff-ticket-technician" [(ngModel)]="selectedTechnicianId" [disabled]="techniciansLoading || !!techniciansError || assigning || savingState || sending">
+                  <option *ngIf="!hasCurrentTechnicianOption" [ngValue]="ticket.tecnicoId ?? null">{{ ticket.tecnicoNombre || 'Sin asignar' }}</option>
+                  <option *ngFor="let tech of technicians" [ngValue]="tech.id">{{ formatTechnician(tech) }}</option>
+                </select>
+                <p>Selecciona un técnico y guarda los cambios para reasignar el ticket.</p>
+                <p class="staff-catalog-error" role="alert" *ngIf="techniciansError">{{ techniciansError }} <button type="button" (click)="loadTechnicians()">Reintentar</button></p>
+              </div>
+              <ng-template #readonlyTechnician><div class="staff-readonly-field"><span>Técnico asignado</span><strong>{{ ticket.tecnicoNombre || 'Sin asignar' }}<small *ngIf="ticket.tecnicoId === currentUserId" class="detail-you">Tú</small></strong></div></ng-template>
+              <button type="button" class="staff-primary-button detail-save" [disabled]="!canSaveManagement" (click)="saveManagement()">{{ savingState || assigning ? 'Guardando…' : mode === 'admin' ? 'Guardar cambios' : 'Guardar estado' }}</button>
+              <div class="detail-sla" *ngIf="sla as progress" [attr.data-tone]="progress.tone">
+                <div><span>Tiempo objetivo (SLA)</span><strong>{{ progress.target }}</strong></div>
+                <div><strong>{{ progress.label }}</strong><span>{{ progress.remaining }}</span></div>
+                <div class="detail-sla-track" role="progressbar" aria-label="Tiempo transcurrido del SLA" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="progress.percent"><span [style.width.%]="progress.percent"></span></div>
+                <small>Vencimiento: {{ formatDateTime(ticket.fechaLimiteResolucion) }}</small>
+              </div>
+            </section>
+            <ng-template #clientTracking>
+              <section class="staff-detail-card detail-tracking" aria-labelledby="detail-tracking-heading">
+                <h2 id="detail-tracking-heading">Seguimiento del ticket</h2>
+                <ol class="detail-progress" *ngIf="ticket.estadoCodigo !== 'CANCELADO'" aria-label="Avance de la solicitud">
+                  <li [class.done]="trackingStep > 0" [class.current]="trackingStep === 0"><span><mat-icon>{{ trackingStep > 0 ? 'check' : 'fiber_manual_record' }}</mat-icon></span><strong>Recibido</strong></li>
+                  <li [class.done]="trackingStep > 1" [class.current]="trackingStep === 1"><span><mat-icon>{{ trackingStep > 1 ? 'check' : 'fiber_manual_record' }}</mat-icon></span><strong>En atención</strong></li>
+                  <li [class.current]="trackingStep === 2"><span><mat-icon>{{ trackingStep === 2 ? 'check' : 'fiber_manual_record' }}</mat-icon></span><strong>{{ isClosed() ? 'Cerrado' : 'Resuelto' }}</strong></li>
+                </ol>
+                <div class="detail-tracking-tags"><div><span>Estado</span><strong class="staff-tone-badge" [attr.data-tone]="statusTone">{{ ticket.estadoNombre }}</strong></div><div><span>Prioridad</span><strong class="staff-tone-badge" [attr.data-tone]="priorityTone">{{ ticket.prioridadNombre }}</strong></div></div>
+                <p class="detail-tracking-note"><mat-icon>info_outline</mat-icon>{{ trackingMessage }}</p>
+              </section>
+            </ng-template>
+            <section class="staff-detail-card detail-people" aria-labelledby="detail-people-heading">
+              <h2 id="detail-people-heading">Personas</h2>
+              <div><span class="staff-person-avatar">{{ initials(ticket.clienteNombre) }}</span><div><strong>{{ ticket.clienteNombre || 'Solicitante' }}</strong><span>Solicitante</span><small *ngIf="mode !== 'client'">{{ ticket.clienteEmail }}</small></div><mat-icon>person_outline</mat-icon></div>
+              <div><span class="staff-person-avatar">{{ initials(ticket.tecnicoNombre) }}</span><div><strong>{{ ticket.tecnicoNombre || 'Sin asignar' }}</strong><span>Técnico asignado</span></div><mat-icon>support_agent</mat-icon></div>
+            </section>
+            <section class="staff-detail-card" aria-labelledby="staff-classification-heading">
+              <h2 id="staff-classification-heading">Clasificación</h2>
+              <dl class="staff-information"><div><dt>Categoría</dt><dd>{{ ticket.categoriaNombre || 'Sin especificar' }}</dd></div><div><dt>Subcategoría</dt><dd>{{ ticket.subcategoriaNombre || 'Sin especificar' }}</dd></div><div><dt>Empresa</dt><dd>{{ ticket.empresaNombre || 'Sin especificar' }}</dd></div><div><dt>Área</dt><dd>{{ ticket.areaNombre || 'Sin especificar' }}</dd></div></dl>
+            </section>
+          </aside>
+        </div>
+        <p class="detail-updated">Última actualización: {{ formatDateTime(ticket.fechaModificacion || ticket.fechaCreacion) }}</p>
+      </ng-container>
+    </div>
+  <dialog appAttachmentModal class="attachment-viewer-backdrop" *ngIf="attachmentViewer" aria-modal="true" [attr.aria-label]="attachmentViewer.nombreOriginal" (cancel)="$event.preventDefault(); closeAttachmentViewer()" (click)="closeAttachmentViewer()">
+    <section class="attachment-viewer"
+      (click)="$event.stopPropagation()">
+      <div class="attachment-viewer-header">
+        <div>
+          <h3>{{ attachmentViewer.nombreOriginal }}</h3>
+          <p>{{ formatBytes(attachmentViewer.tamanoBytes) }} · {{ isImage(attachmentViewer) ? 'Imagen' : isPdf(attachmentViewer) ? 'PDF' : 'Archivo' }}</p>
+        </div>
+        <button mat-icon-button type="button" aria-label="Descargar adjunto" *ngIf="attachmentViewerUrl" (click)="downloadAttachment()"><mat-icon>download</mat-icon></button>
+        <button mat-icon-button type="button" aria-label="Cerrar visor" (click)="closeAttachmentViewer()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="attachment-viewer-content" *ngIf="attachmentViewerLoading">
+        <mat-spinner diameter="42"></mat-spinner>
+      </div>
+      <div class="attachment-viewer-content" *ngIf="!attachmentViewerLoading && isImage(attachmentViewer)">
+        <img [src]="attachmentViewerUrl" [alt]="attachmentViewer.nombreOriginal">
+      </div>
+      <div class="attachment-viewer-content pdf-content" *ngIf="!attachmentViewerLoading && isPdf(attachmentViewer)">
+        <iframe sandbox="allow-same-origin" referrerpolicy="no-referrer" [src]="attachmentViewerSafeUrl" [title]="attachmentViewer.nombreOriginal"></iframe>
+      </div>
+      <div class="attachment-viewer-file" *ngIf="!attachmentViewerLoading && !isImage(attachmentViewer) && !isPdf(attachmentViewer)">
+        <mat-icon>{{ icon(attachmentViewer) }}</mat-icon>
+        <p>Este tipo de archivo no tiene vista previa.</p>
+        <button mat-raised-button color="primary" type="button" (click)="downloadAttachment()">
+          <mat-icon>download</mat-icon> Descargar archivo
+        </button>
+      </div>
+    </section>
+  </dialog>
+  <ng-template #loadingState>
+    <div class="jira-card loading-state" [attr.aria-busy]="loading"><mat-spinner *ngIf="loading" diameter="42"></mat-spinner>
+      <p role="status" *ngIf="loading">Cargando ticket…</p>
+      <p role="alert" *ngIf="!loading && errorMessage">{{ errorMessage }}</p>
+      <button mat-stroked-button type="button" *ngIf="!loading && errorMessage" (click)="retryLoad()">Reintentar</button>
+    </div>
+  </ng-template>
+</div>

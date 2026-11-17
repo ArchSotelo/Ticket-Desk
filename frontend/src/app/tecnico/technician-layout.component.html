@@ -1,0 +1,57 @@
+    <div class="tech-shell page-shell" (keydown.escape)="navigation.closeMobile()">
+      <app-topbar [sidebarExpanded]="navigation.expanded()" (toggleSidebar)="navigation.toggle()"></app-topbar>
+
+      <div class="tech-body">
+        <button *ngIf="navigation.isCompact() && navigation.mobileOpen()" class="sidebar-backdrop" aria-label="Cerrar menú" (click)="navigation.closeMobile()"></button>
+        <aside class="tech-sidebar" [class.collapsed]="sidebarCollapsed" [class.mobile-open]="navigation.mobileOpen()" (click)="navigation.closeMobile()">
+
+          <nav class="tech-nav">
+            
+            <a routerLink="/tecnico/dashboard" routerLinkActive="active">
+              <mat-icon>dashboard</mat-icon>
+              <span *ngIf="!sidebarCollapsed">Dashboard</span>
+            </a>
+            <a routerLink="/tecnico/kanban" routerLinkActive="active">
+              <mat-icon>view_kanban</mat-icon>
+              <span *ngIf="!sidebarCollapsed">Kanban</span>
+            </a>
+            <a routerLink="/tecnico" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              <mat-icon>support_agent</mat-icon>
+              <span *ngIf="!sidebarCollapsed">Lista de Tickets</span>
+            </a>
+            <a routerLink="/tecnico/knowledge-base" routerLinkActive="active">
+              <mat-icon>menu_book</mat-icon>
+              <span *ngIf="!sidebarCollapsed">Base Conocimiento</span>
+            </a>
+            <a *ngIf="authService.hasPermission('CONTACT_READ')" routerLink="/tecnico/contactos" routerLinkActive="active">
+              <mat-icon>contacts</mat-icon>
+              <span *ngIf="!sidebarCollapsed">Contactos</span>
+            </a>
+            <a routerLink="/tecnico/servicios" routerLinkActive="active">
+              <mat-icon>miscellaneous_services</mat-icon>
+              <span *ngIf="!sidebarCollapsed">Servicios</span>
+            </a>
+            <a *ngIf="authService.hasPermission('REPORT_VIEW')" routerLink="/tecnico/reports" routerLinkActive="active">
+              <mat-icon>bar_chart</mat-icon>
+              <span *ngIf="!sidebarCollapsed">Reportes & SLA</span>
+            </a>
+           
+          </nav>
+          
+          <!-- Editar para mejora -->
+          <!-- <div class="sidebar-footer" *ngIf="!sidebarCollapsed">
+            <div class="session-card">
+              <small>Sesión activa</small>
+              <strong>{{ currentUser?.fullName }}</strong>
+              <span>{{ currentUser?.email }}</span>
+            </div>
+          </div> -->
+          
+        </aside>
+
+        <main class="tech-main">
+          <router-outlet></router-outlet>
+        </main>
+      </div>
+      <app-brand-footer></app-brand-footer>
+    </div>

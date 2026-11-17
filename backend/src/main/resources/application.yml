@@ -1,0 +1,100 @@
+# =============================================================================
+# CONFIGURACIÓN ÚNICA DEL BACKEND
+# Se utiliza la misma configuración al ejecutar localmente o en un servidor.
+# ${VARIABLE} obtiene un valor del entorno; ${VARIABLE:valor} indica un valor por defecto.
+# Las credenciales se cargan desde la terminal o IntelliJ; este archivo no lee .env.
+# =============================================================================
+
+# Dirección del backend: http://localhost:8080/api/v1
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: ticket-management-system-mysql
+
+  # Conexión MySQL. La base, el usuario y la contraseña provienen del entorno privado.
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=${DB_TIMEZONE}&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  # Hibernate adapta las tablas a las entidades al iniciar; puede modificar el esquema.
+  # Las consultas SQL no se imprimen en la consola.
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  # Respuestas JSON: fechas legibles, zona horaria y omisión de campos nulos.
+  jackson:
+    # Conserva el contrato JSON anterior utilizando el motor Jackson 3.
+    use-jackson2-defaults: true
+    time-zone: ${APP_TIMEZONE}
+    default-property-inclusion: non_null
+
+  # Límites de carga: hasta 25 MB por archivo y 50 MB por petición completa.
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 50MB
+
+  # Servidor SMTP. Solo se usa para enviar correo si APP_MAIL_ENABLED está activado.
+  # Los valores por defecto permiten iniciar sin configurar un servidor de correo.
+  mail:
+    host: ${SPRING_MAIL_HOST}
+    port: ${SPRING_MAIL_PORT}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
+          starttls:
+            enable: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
+
+# Propiedades propias de la aplicación, consumidas por el código del backend.
+app:
+  # Envío de correo desactivado por defecto; se habilita desde el entorno.
+  mail:
+    enabled: ${APP_MAIL_ENABLED}
+
+  # Autenticación: clave privada obligatoria para firmar y verificar los tokens JWT.
+  # Generar una clave con: openssl rand -hex 32. Guardarla únicamente en el entorno privado.
+  # Los tiempos se expresan en milisegundos: 18 000 000 ms equivalen a 5 horas.
+  jwt:
+    secret: ${APP_JWT_SECRET}
+    expiration-ms: 18000000
+    refresh-expiration-ms: 18000000
+
+  # Protección del acceso: límites por cuenta y por dirección de conexión.
+  security:
+    login:
+      max-failures: 5
+      lock-minutes: 15
+      requests-per-minute: 30
+
+  # Adjuntos: LOCAL guarda en disco (por defecto); MINIO usa almacenamiento de objetos.
+  # Las rutas relativas se interpretan desde la carpeta de ejecución del backend.
+  storage:
+    provider: ${APP_STORAGE_PROVIDER}
+    local:
+      upload-dir: ${APP_STORAGE_LOCAL_UPLOAD_DIR}
+    # Completar las credenciales del entorno únicamente si se utiliza MINIO.
+    minio:
+      endpoint: ${APP_STORAGE_MINIO_ENDPOINT}
+      access-key: ${APP_STORAGE_MINIO_ACCESS_KEY}
+      secret-key: ${APP_STORAGE_MINIO_SECRET_KEY}
+      bucket-name: ${APP_STORAGE_MINIO_BUCKET_NAME}
+
+# Documentación de la API. Las rutas incluyen el prefijo /api/v1 del servidor.
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method

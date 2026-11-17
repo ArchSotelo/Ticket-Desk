@@ -1,0 +1,181 @@
+<section class="settings-hub" *ngIf="selected === 'home'" aria-labelledby="settings-hub-title">
+  <header class="hub-heading"><p class="hub-eyebrow">Administración</p><h1 id="settings-hub-title">Ajustes</h1><p>Configura el comportamiento general de tu mesa de ayuda.</p></header>
+  <div class="hub-layout">
+    <nav class="hub-nav" aria-label="Categorías de configuración">
+      <p class="hub-nav-title">Configuración</p>
+      <div class="hub-nav-options"><button class="hub-nav-option" type="button" *ngFor="let category of visibleCategories" [class.active]="settingsFilter === category.id" [attr.aria-pressed]="settingsFilter === category.id" (click)="selectCategory(category.id)"><mat-icon aria-hidden="true">{{ category.icon }}</mat-icon>{{ category.label }}</button></div>
+    </nav>
+    <div class="hub-content">
+      <div class="hub-search-field">
+        <label for="settings-search" class="hub-sr-only">Buscar configuración</label>
+        <div class="hub-search"><mat-icon aria-hidden="true">search</mat-icon><input id="settings-search" type="search" [formControl]="searchControl" placeholder="Buscar configuración" autocomplete="off"><button type="button" *ngIf="searchControl.value" (click)="clearSearch()" aria-label="Limpiar búsqueda"><mat-icon aria-hidden="true">close</mat-icon></button></div>
+      </div>
+      <p class="hub-sr-only" aria-live="polite" aria-atomic="true">{{ visibleCards.length }} {{ visibleCards.length === 1 ? 'opción encontrada' : 'opciones encontradas' }}</p>
+      <section class="hub-group" *ngIf="communicationCards.length" aria-labelledby="hub-communication-title">
+        <h2 id="hub-communication-title">Comunicación</h2>
+        <ng-container *ngFor="let card of communicationCards; trackBy: trackCard"><ng-container *ngTemplateOutlet="availableCard; context: { $implicit: card }"></ng-container></ng-container>
+      </section>
+      <section class="hub-group" *ngIf="serviceCards.length" aria-labelledby="hub-services-title">
+        <h2 id="hub-services-title">Servicios</h2>
+        <div class="hub-service-grid"><ng-container *ngFor="let card of serviceCards; trackBy: trackCard"><ng-container *ngTemplateOutlet="availableCard; context: { $implicit: card }"></ng-container></ng-container></div>
+      </section>
+      <section class="hub-group" *ngIf="securityCards.length" aria-labelledby="hub-security-title">
+        <h2 id="hub-security-title">Seguridad</h2>
+        <div class="hub-service-grid"><ng-container *ngFor="let card of securityCards; trackBy: trackCard"><ng-container *ngTemplateOutlet="availableCard; context: { $implicit: card }"></ng-container></ng-container></div>
+      </section>
+      <section class="hub-group" *ngIf="documentationCards.length" aria-labelledby="hub-documentation-title">
+        <h2 id="hub-documentation-title">Desarrollo</h2>
+        <div class="hub-service-grid"><ng-container *ngFor="let card of documentationCards; trackBy: trackCard"><ng-container *ngTemplateOutlet="availableCard; context: { $implicit: card }"></ng-container></ng-container></div>
+      </section>
+      <div class="hub-empty" *ngIf="!visibleCards.length"><mat-icon aria-hidden="true">search_off</mat-icon><h2>No hay configuraciones con estos filtros</h2><p>Prueba con otra búsqueda o selecciona una categoría diferente.</p><button type="button" class="hub-reset" (click)="resetHubFilters()">Restablecer filtros</button></div>
+    </div>
+  </div>
+  <ng-template #availableCard let-card>
+    <button class="hub-available-card" type="button" [attr.aria-label]="card.title" [attr.data-setting]="card.id" (click)="open(card.id)"><span class="hub-card-icon"><mat-icon aria-hidden="true">{{ card.icon }}</mat-icon></span><span class="hub-card-copy"><strong>{{ card.title }}</strong><small>{{ card.description }}</small></span><span class="hub-card-actions"><span class="hub-available-label"><i aria-hidden="true"></i>Disponible</span><span class="hub-card-action">{{ card.action }}<mat-icon aria-hidden="true">chevron_right</mat-icon></span></span></button>
+  </ng-template>
+</section>
+
+<section class="config-page mail-settings-page" *ngIf="selected === 'security'" aria-labelledby="security-settings-title">
+  <div class="settings-detail-header">
+    <button class="back-button" type="button" (click)="back()" [disabled]="savingPolicy || unlockingUserId !== null" aria-label="Volver a ajustes"><mat-icon aria-hidden="true">arrow_back</mat-icon></button>
+    <div><p class="eyebrow">Administración / Seguridad</p><h1 id="security-settings-title">Cuentas y acceso</h1><p>Administra bloqueos y define los límites para iniciar sesión.</p></div>
+  </div>
+  <p class="load-message error" role="alert" *ngIf="securityError">{{ securityError }}</p>
+  <p class="feedback success" role="status" *ngIf="securitySuccess">{{ securitySuccess }}</p>
+
+  <section class="settings-panel" aria-labelledby="blocked-accounts-title">
+    <div class="panel-title"><span class="panel-icon"><mat-icon aria-hidden="true">person_off</mat-icon></span><div><h2 id="blocked-accounts-title">Cuentas bloqueadas</h2><p>Se muestran cuentas bloqueadas por intentos fallidos o por una acción administrativa.</p></div><strong>{{ blockedTotalElements }}</strong></div>
+    <p class="load-message" role="status" *ngIf="loadingBlocked">Cargando cuentas…</p>
+    <div class="hub-empty" *ngIf="!loadingBlocked && !blockedAccounts.length"><mat-icon aria-hidden="true">verified_user</mat-icon><h3>No hay cuentas bloqueadas</h3><p>Las cuentas bloqueadas aparecerán aquí.</p></div>
+    <div class="table-scroll" *ngIf="blockedAccounts.length">
+      <table class="security-table"><thead><tr><th>Usuario</th><th>Cuenta</th><th>Intentos fallidos</th><th>Desbloqueo</th><th>Acción</th></tr></thead>
+        <tbody><tr *ngFor="let account of blockedAccounts"><td><strong>{{ account.nombreCompleto }}</strong></td><td><span>{{ account.username }}</span><small>{{ account.email }}</small></td><td>{{ account.intentosFallidos }}</td><td>{{ formatLockDate(account.bloqueadoHasta) }}</td><td><button class="primary-action security-unlock" type="button" (click)="unlockAccount(account)" [disabled]="unlockingUserId !== null"><mat-icon aria-hidden="true">lock_open</mat-icon>{{ unlockingUserId === account.id ? 'Desbloqueando…' : 'Desbloquear' }}</button></td></tr></tbody>
+      </table>
+    </div>
+    <div class="security-pagination" *ngIf="blockedTotalPages > 1"><button type="button" class="back-button" aria-label="Página anterior" [disabled]="blockedPage === 0 || loadingBlocked" (click)="loadBlockedAccounts(blockedPage - 1)"><mat-icon>chevron_left</mat-icon></button><span>Página {{ blockedPage + 1 }} de {{ blockedTotalPages }}</span><button type="button" class="back-button" aria-label="Página siguiente" [disabled]="blockedPage + 1 >= blockedTotalPages || loadingBlocked" (click)="loadBlockedAccounts(blockedPage + 1)"><mat-icon>chevron_right</mat-icon></button></div>
+  </section>
+
+  <form [formGroup]="loginPolicyForm" (ngSubmit)="saveLoginPolicy()" class="mail-form security-policy-form" novalidate [attr.aria-busy]="loadingSecurity || savingPolicy">
+    <fieldset class="config-fieldset" [disabled]="loadingSecurity || savingPolicy"><legend class="sr-only">Política de inicio de sesión</legend>
+      <section class="settings-panel" aria-labelledby="login-policy-title">
+        <div class="panel-title"><span class="panel-icon"><mat-icon aria-hidden="true">policy</mat-icon></span><div><h2 id="login-policy-title">Política de inicio de sesión</h2><p>Los valores se guardan en la base de datos y se aplican en el servidor.</p></div></div>
+        <div class="security-policy-grid">
+          <div><label for="login-max-attempts">Intentos fallidos antes del bloqueo</label><input id="login-max-attempts" type="number" min="3" max="20" formControlName="maxIntentos" [attr.aria-invalid]="!!policyError('maxIntentos')"><small>De 3 a 20 intentos.</small><p class="field-error" *ngIf="policyError('maxIntentos')">{{ policyError('maxIntentos') }}</p></div>
+          <div><label for="login-lock-minutes">Duración del bloqueo</label><input id="login-lock-minutes" type="number" min="1" max="1440" formControlName="duracionBloqueoMinutos" [attr.aria-invalid]="!!policyError('duracionBloqueoMinutos')"><small>De 1 a 1440 minutos.</small><p class="field-error" *ngIf="policyError('duracionBloqueoMinutos')">{{ policyError('duracionBloqueoMinutos') }}</p></div>
+          <div><label for="login-ip-limit">Solicitudes de login por IP por minuto</label><input id="login-ip-limit" type="number" min="5" max="300" formControlName="limiteLoginPorMinuto" [attr.aria-invalid]="!!policyError('limiteLoginPorMinuto')"><small>De 5 a 300 solicitudes por minuto.</small><p class="field-error" *ngIf="policyError('limiteLoginPorMinuto')">{{ policyError('limiteLoginPorMinuto') }}</p></div>
+        </div>
+        <p class="field-help" *ngIf="securityAuditActor">Última modificación por {{ securityAuditActor }}<span *ngIf="securityUpdatedAt"> · {{ securityUpdatedAt | date:'short' }}</span>. Cada cambio queda registrado en auditoría.</p>
+        <div class="panel-footer"><button class="primary-action" type="submit" [disabled]="savingPolicy || loadingSecurity"><mat-icon aria-hidden="true">save</mat-icon>{{ savingPolicy ? 'Guardando…' : 'Guardar política' }}</button></div>
+      </section>
+    </fieldset>
+  </form>
+</section>
+
+<section class="config-page mail-settings-page" *ngIf="selected === 'services'" aria-labelledby="service-settings-title">
+  <div class="settings-detail-header">
+    <button class="back-button" type="button" (click)="backToServicesMenu()" [disabled]="saving"
+      aria-label="Volver a configuración de servicios"><mat-icon>arrow_back</mat-icon></button>
+    <div>
+      <p class="eyebrow">Ajustes / Servicios</p>
+      <h1 id="service-settings-title">Configuración de servicios</h1>
+      <p>Define los vencimientos y los avisos automáticos para los servicios registrados.</p>
+    </div>
+  </div>
+  <p class="load-message" role="status" *ngIf="loadingServices">Cargando configuración…</p>
+  <div class="load-message error" role="alert" *ngIf="serviceLoadError">{{ serviceLoadError }}<button type="button" (click)="loadServiceSettings()">Reintentar</button></div>
+  <form [formGroup]="serviceForm" (ngSubmit)="saveServiceSettings()" class="mail-form" novalidate [attr.aria-busy]="saving || loadingServices">
+    <fieldset class="config-fieldset" [disabled]="saving || loadingServices || !!serviceLoadError">
+      <legend class="sr-only">Configuración de servicios</legend>
+      <div class="service-workspace">
+        <div class="service-editor">
+          <div class="service-config-grid">
+            <section class="settings-panel deadline-panel" aria-labelledby="deadline-title">
+              <div class="panel-title"><span class="panel-icon"><mat-icon aria-hidden="true">event</mat-icon></span><div><h2 id="deadline-title">Plazo de aviso</h2><p>Define cuándo se mostrará “Por vencer”.</p></div></div>
+              <label for="expiry-days">Días antes del vencimiento *</label>
+              <div class="days-field"><input id="expiry-days" type="number" min="1" max="365" step="1" formControlName="diasPorVencer" [attr.aria-invalid]="serviceForm.get('diasPorVencer')?.invalid && serviceForm.get('diasPorVencer')?.touched" aria-describedby="expiry-help expiry-error"><span>días</span></div>
+              <p class="field-help" id="expiry-help">Entre 1 y 365 días antes de la fecha de fin.</p>
+              <p class="field-error" id="expiry-error" *ngIf="serviceForm.get('diasPorVencer')?.invalid && serviceForm.get('diasPorVencer')?.touched">Ingresa un plazo entre 1 y 365 días.</p>
+            </section>
+            <section class="settings-panel reminder-panel" aria-labelledby="expired-title">
+              <div class="panel-title"><span class="panel-icon"><mat-icon aria-hidden="true">notifications</mat-icon></span><div><h2 id="expired-title">Recordatorio al vencer</h2><p>Envía el correo configurado cuando el servicio pase a vencido.</p></div></div>
+              <label class="switch-label"><span>Enviar aviso al vencer</span><input class="switch" type="checkbox" role="switch" formControlName="recordatorioVencido"></label>
+            </section>
+          </div>
+          <section class="settings-panel template-panel" aria-labelledby="reminder-template-title">
+            <div class="panel-title"><span class="panel-icon"><mat-icon aria-hidden="true">description</mat-icon></span><div><h2 id="reminder-template-title">Plantillas de recordatorio</h2><p>Personaliza el asunto y el contenido del correo automático.</p></div></div>
+            <div class="reminder-selector" role="group" aria-label="Tipo de recordatorio"><button type="button" *ngFor="let option of serviceTemplateOptions" [attr.aria-label]="option.label" [attr.aria-pressed]="serviceTemplateEvent === option.key" [class.active]="serviceTemplateEvent === option.key" (click)="serviceTemplateEvent = option.key">{{ option.key === 'upcoming' ? 'Por vencer' : 'Vencido' }}</button></div>
+            <p class="field-help selected-description">{{ selectedServiceTemplate.description }}</p>
+            <label for="service-subject">Asunto del correo *</label><input id="service-subject" type="text" [formControl]="selectedServiceSubjectControl" [attr.aria-invalid]="selectedServiceSubjectControl.invalid && selectedServiceSubjectControl.touched" aria-describedby="service-subject-error">
+            <p class="field-error" id="service-subject-error" *ngIf="selectedServiceSubjectControl.invalid && selectedServiceSubjectControl.touched">Ingresa el asunto del correo.</p>
+            <label for="service-body">Cuerpo del mensaje *</label><textarea id="service-body" rows="8" [formControl]="selectedServiceBodyControl" [attr.aria-invalid]="selectedServiceBodyControl.invalid && selectedServiceBodyControl.touched" aria-describedby="service-body-error"></textarea>
+            <p class="field-error" id="service-body-error" *ngIf="selectedServiceBodyControl.invalid && selectedServiceBodyControl.touched">Ingresa el cuerpo del mensaje.</p>
+            <div class="variables"><mat-icon aria-hidden="true">code</mat-icon><span>Variables disponibles</span><code>{{'{{servicio.nombre}}'}}</code><code>{{'{{servicio.fechaFin}}'}}</code><code>{{'{{servicio.estado}}'}}</code></div>
+          </section>
+        </div>
+        <aside class="settings-panel rules-panel" aria-labelledby="reminder-rules-title"><div class="panel-title"><span class="panel-icon"><mat-icon aria-hidden="true">info_outline</mat-icon></span><h2 id="reminder-rules-title">Cómo funcionan los avisos</h2></div><ol><li><strong>El estado depende de la fecha de fin.</strong><p>Se calcula automáticamente; no se cambia desde esta configuración.</p></li><li><strong>El plazo determina cuándo aparece “Por vencer”.</strong><p>Se utiliza el número de días configurado antes del vencimiento.</p></li><li><strong>Al vencer se envía el aviso si está habilitado.</strong><p>Se utiliza la plantilla “Servicio vencido”.</p></li></ol></aside>
+      </div>
+    </fieldset>
+    <div class="validation-summary" role="alert" *ngIf="serviceSubmitted && serviceForm.invalid"><strong>Revisa los campos obligatorios.</strong><p *ngIf="serviceForm.get('diasPorVencer')?.invalid">El plazo debe estar entre 1 y 365 días.</p><ng-container *ngFor="let option of serviceTemplateOptions"><button type="button" *ngIf="serviceForm.get(option.subjectControl)?.invalid || serviceForm.get(option.bodyControl)?.invalid" (click)="serviceTemplateEvent = option.key">Completa el asunto y el cuerpo de {{ option.label.toLowerCase() }}.</button></ng-container></div>
+    <div class="panel-footer"><p class="feedback success" role="status" *ngIf="saved">Configuración guardada correctamente.</p><p class="feedback error" role="alert" *ngIf="testError">{{ testError }}</p><button class="primary-action" type="submit" [disabled]="saving || loadingServices || !!serviceLoadError"><mat-icon aria-hidden="true">save</mat-icon>{{ saving ? 'Guardando…' : 'Guardar configuración' }}</button></div>
+  </form>
+</section>
+
+<section class="config-page mail-settings-page" *ngIf="selected === 'email'" aria-labelledby="email-settings-title">
+  <div class="settings-detail-header">
+    <button class="back-button" type="button" (click)="back()" [disabled]="saving || testing"
+      aria-label="Volver a ajustes"><mat-icon>arrow_back</mat-icon></button>
+    <div>
+      <p class="eyebrow">Ajustes / Comunicación</p>
+      <h1 id="email-settings-title">Configuración de correo</h1>
+      <p>Controla los correos automáticos enviados por el sistema.</p>
+    </div>
+  </div>
+  <p class="load-message" role="status" *ngIf="loadingEmail">Cargando preferencias…</p>
+  <div class="load-message error" role="alert" *ngIf="emailLoadError">{{ emailLoadError }}<button type="button" (click)="loadSettings()">Reintentar</button></div>
+  <form [formGroup]="emailForm" (ngSubmit)="saveEmail()" class="mail-form" novalidate [attr.aria-busy]="saving || loadingEmail">
+    <section class="settings-panel status-panel">
+      <div class="smtp-copy"><h2>Estado SMTP</h2><p>La conexión se administra desde el servidor y sus variables protegidas.</p></div>
+      <p class="smtp-pending" role="status" *ngIf="loadingSmtp">Consultando estado SMTP…</p>
+      <div class="smtp-pending error" role="alert" *ngIf="smtpError">{{ smtpError }}<button type="button" (click)="loadEmailStatus()">Reintentar consulta</button></div>
+      <div *ngIf="!loadingSmtp && !smtpError" class="status-summary" [class.warning]="!smtpEnabled || !smtpConfigured"><mat-icon aria-hidden="true">{{ smtpEnabled &&
+          smtpConfigured ? 'verified' : 'error_outline' }}</mat-icon>
+        <div><strong>{{ smtpEnabled && smtpConfigured ? 'Servicio listo para enviar' : 'Servicio pendiente de
+            configuración' }}</strong><span>{{ smtpEnabled && smtpConfigured ? 'El servidor está preparado para entregar
+            notificaciones.' : 'Revisa las variables SMTP del entorno del backend.' }}</span></div>
+      </div>
+      <div class="smtp-test"><button class="primary-action" type="button" (click)="testEmail()" [disabled]="testing || saving" aria-describedby="smtp-test-help"><mat-icon aria-hidden="true">send</mat-icon>{{ testing ? 'Enviando...' : 'Probar conexión' }}</button><p id="smtp-test-help">Envía un mensaje al correo configurado en el servidor.</p></div>
+      <p class="feedback info smtp-feedback" role="status" *ngIf="testSent">Correo de prueba enviado correctamente.</p>
+    </section>
+    <fieldset class="config-fieldset" [disabled]="saving || loadingEmail || !!emailLoadError"><legend class="sr-only">Preferencias de correo</legend>
+    <section class="settings-panel" aria-labelledby="notification-events-title">
+      <div class="panel-title">
+        <div><span class="section-kicker">Reglas del sistema</span>
+          <h2 id="notification-events-title">Eventos de notificación</h2>
+          <p>Selecciona cuándo se enviarán correos automáticos.</p>
+        </div><span class="panel-icon"><mat-icon>notifications_active</mat-icon></span>
+      </div>
+      <div class="event-grid">
+        <label *ngFor="let event of notificationEvents"><mat-icon aria-hidden="true">{{ event.icon }}</mat-icon><span><strong>{{ event.label }}</strong><small>{{ event.description }}</small></span><input class="switch" type="checkbox" role="switch" [formControlName]="event.control"></label>
+      </div>
+    </section>
+    <section class="settings-panel template-panel" aria-labelledby="email-template-title">
+      <div class="panel-title">
+        <div><span class="section-kicker">Contenido del mensaje</span>
+          <h2 id="email-template-title">Plantillas por evento</h2>
+          <p>Selecciona un evento para editar su asunto y cuerpo de correo.</p>
+        </div><span class="panel-icon"><mat-icon>description</mat-icon></span>
+      </div>
+      <div class="template-workspace">
+      <div class="template-nav" role="group" aria-label="Evento de la plantilla"><button type="button" *ngFor="let option of templateOptions; let i = index" [attr.aria-label]="option.label" [attr.aria-pressed]="templateEvent === option.key" [class.active]="templateEvent === option.key" (click)="templateEvent = option.key"><mat-icon aria-hidden="true">{{ notificationEvents[i].icon }}</mat-icon><span><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span></button></div>
+      <div class="template-editor">
+      <label for="email-subject">Asunto del correo</label><input id="email-subject" type="text" [formControl]="selectedSubjectControl">
+      <label for="email-body">Cuerpo del mensaje</label><textarea id="email-body" rows="9" [formControl]="selectedBodyControl"></textarea>
+      <div class="variables"><mat-icon>code</mat-icon><span>Variables
+          disponibles</span><code>{{'{{ticket.codigo}}'}}</code><code>{{'{{ticket.titulo}}'}}</code><code>{{'{{cliente.nombre}}'}}</code><code>{{'{{mensaje}}'}}</code>
+      </div>
+      </div></div>
+    </section>
+    </fieldset>
+    <div class="panel-footer"><p class="feedback success" role="status" *ngIf="saved">Plantillas guardadas correctamente.</p><p class="feedback error" role="alert" *ngIf="testError">{{ testError }}</p><button class="primary-action" type="submit" [disabled]="saving || testing || loadingEmail || !!emailLoadError"><mat-icon aria-hidden="true">save</mat-icon>{{ saving ? 'Guardando…' : 'Guardar cambios' }}</button></div>
+  </form>
+</section>

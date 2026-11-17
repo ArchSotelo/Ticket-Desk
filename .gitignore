@@ -1,0 +1,56 @@
+# Credenciales y configuración privada. Solo se publica la plantilla sin secretos.
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+!docker/.env.docker.example
+**/application-local.yml
+**/application-local.yaml
+**/application-local.properties
+**/application-secrets.*
+.aws/
+.codex/
+.agents/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+.npmrc
+**/.npmrc
+
+# Dependencias, compilaciones, cachés y registros.
+node_modules/
+backend/target/
+frontend/dist/
+frontend/.angular/
+*.log
+*.hprof
+
+# Adjuntos y exportaciones locales: no son código del proyecto.
+**/uploads/
+outputs/
+docs/
+docx_work/
+build_activities.mjs
+backups/
+database/backups/
+*.dump
+*.sql.gz
+*.sql.bak
+*.sql.zip
+
+# Configuración local de Docker.
+docker-compose.override.yml
+
+# Editor y sistema operativo.
+.idea/
+.vscode/
+.junie/
+*.iml
+.DS_Store
+Thumbs.db
+Desktop.ini

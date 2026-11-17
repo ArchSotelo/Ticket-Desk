@@ -1,0 +1,108 @@
+<section class="company-workspace" aria-labelledby="company-heading">
+  <header class="company-page-heading">
+    <div><p class="company-eyebrow">Administración</p><h1 id="company-heading">Empresas</h1><p>Administra las compañías y su estado operativo.</p></div>
+    <button class="company-button company-primary" type="button" (click)="openModal()" [disabled]="busy"><mat-icon aria-hidden="true">add</mat-icon>Nueva empresa</button>
+  </header>
+  <p class="company-feedback company-success" *ngIf="successMessage" role="status">{{ successMessage }}</p>
+  <p class="company-feedback company-error" *ngIf="errorMessage && !showModal" role="alert">{{ errorMessage }}</p>
+
+    <form class="company-filters" (submit)="$event.preventDefault(); applyFilters()" aria-label="Filtros de empresas">
+      <div class="company-field company-search">
+        <label for="company-search">Buscar empresa</label>
+        <div><mat-icon aria-hidden="true">search</mat-icon><input id="company-search" name="search" type="search" placeholder="Razón social, RUC o correo" [(ngModel)]="search" (ngModelChange)="applyFilters()"></div>
+      </div>
+      <div class="company-field">
+        <label for="company-status">Estado</label>
+        <select id="company-status" name="status" [(ngModel)]="status" (ngModelChange)="applyFilters()"><option value="">Todos los estados</option><option value="active">Activas</option><option value="inactive">Inactivas</option></select>
+      </div>
+      <button type="button" class="company-button company-secondary" (click)="clearFilters()" [disabled]="!hasFilters"><mat-icon aria-hidden="true">restart_alt</mat-icon>Limpiar</button>
+    </form>
+  <section class="company-directory" aria-label="Directorio de empresas">
+    <div class="company-results">
+      <div><h2>Directorio de empresas</h2><p aria-live="polite">{{ loading ? 'Cargando empresas…' : loaded ? totalElements + (totalElements === 1 ? ' empresa encontrada' : ' empresas encontradas') : 'Directorio de empresas' }}</p></div>
+    </div>
+    <div class="company-feedback company-error company-load-error" *ngIf="loadError" role="alert">{{ loadError }}<button type="button" (click)="load()" [disabled]="loading">Reintentar</button></div>
+    <div class="company-table-scroll" [attr.aria-busy]="loading">
+      <table class="company-table"><caption class="company-sr-only">Empresas registradas, su RUC, correo y estado</caption>
+        <thead><tr><th scope="col">Empresa</th><th scope="col">RUC</th><th scope="col">Correo electrónico</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let company of empresas; trackBy: trackCompany">
+            <td><span class="company-identity"><span class="company-avatar" aria-hidden="true"><mat-icon>business</mat-icon></span><strong>{{ company.razonSocial }}</strong></span></td>
+            <td class="company-ruc-cell">{{ company.ruc }}</td>
+            <td class="company-email-cell">{{ company.email || 'Sin correo' }}</td>
+            <td><span class="company-status-pill" [class.company-inactive]="!company.estado"><i aria-hidden="true"></i>{{ company.estado ? 'Activa' : 'Inactiva' }}</span></td>
+            <td><div class="company-row-actions">
+              <button type="button" class="company-edit-button" (click)="edit(company)" [disabled]="busy || loading || !!loadError" [attr.aria-label]="'Editar empresa ' + company.razonSocial"><mat-icon aria-hidden="true">edit</mat-icon>Editar</button>
+              <button type="button" class="company-delete-button" (click)="remove(company)" [disabled]="busy || loading || !!loadError || !company.estado" [attr.aria-label]="'Eliminar empresa ' + company.razonSocial" [title]="company.estado ? 'Eliminar empresa (desactivar)' : 'La empresa ya está inactiva'"><mat-icon aria-hidden="true">{{ deletingId === company.id ? 'hourglass_top' : 'delete_outline' }}</mat-icon></button>
+            </div></td>
+          </tr>
+          <tr *ngIf="!empresas.length"><td colspan="5"><div class="company-empty">
+            <mat-icon aria-hidden="true">{{ loading ? 'hourglass_top' : loadError ? 'cloud_off' : 'business' }}</mat-icon>
+            <h2>{{ loading ? 'Cargando directorio…' : loadError ? 'El directorio no está disponible' : hasFilters ? 'No encontramos empresas con estos filtros' : 'Todavía no hay empresas registradas' }}</h2>
+            <p *ngIf="!loading && !loadError">{{ hasFilters ? 'Prueba con otra razón social, RUC, correo o estado.' : 'Registra la primera empresa para organizar su atención.' }}</p>
+            <button *ngIf="hasFilters && !loading && !loadError" type="button" class="company-button company-secondary" (click)="clearFilters()">Limpiar filtros</button>
+          </div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="company-pagination">
+      <p>Mostrando <strong>{{ firstItemIndex }}–{{ lastItemIndex }}</strong> de {{ totalElements }}</p>
+      <div class="company-pagination-controls">
+        <label for="company-page-size">Filas</label><select id="company-page-size" name="pageSize" [ngModel]="pageSize" (ngModelChange)="cambiarTamanoPagina($event)" [disabled]="loading"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select>
+        <nav class="company-pages" aria-label="Paginación de empresas">
+          <button type="button" class="company-page-icon" aria-label="Página anterior" [disabled]="pageIndex === 0 || loading" (click)="irAPagina(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
+          <button type="button" class="company-page-number" *ngFor="let page of visiblePages()" [class.selected]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" [disabled]="loading" (click)="irAPagina(page)">{{ page + 1 }}</button>
+          <button type="button" class="company-page-icon" aria-label="Página siguiente" [disabled]="totalPages === 0 || pageIndex >= totalPages - 1 || loading" (click)="irAPagina(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+        </nav>
+      </div>
+    </footer>
+  </section>
+
+  <dialog #companyEditor class="company-editor" aria-labelledby="company-editor-title" aria-describedby="company-editor-description" [attr.aria-busy]="saving" (cancel)="onCancel($event)" (click)="onBackdropClick($event)">
+    <header class="company-editor-heading">
+      <span class="company-editor-icon" aria-hidden="true"><mat-icon>business</mat-icon></span>
+      <div class="company-editor-title-block">
+        <p class="company-eyebrow">Directorio de empresas</p>
+        <h2 id="company-editor-title">{{ editingId !== null ? 'Editar empresa' : 'Nueva empresa' }}</h2>
+        <p id="company-editor-description">{{ editingId !== null ? 'Actualiza los datos de la compañía.' : 'Registra los datos de la compañía.' }}</p>
+      </div>
+      <button type="button" class="company-close" aria-label="Cerrar formulario de empresa" (click)="closeModal()" [disabled]="saving"><mat-icon aria-hidden="true">close</mat-icon></button>
+    </header>
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <div #companyEditorBody class="company-editor-body">
+        <div class="company-field">
+          <label for="company-editor-name">Razón social <span class="company-required" aria-hidden="true">*</span></label>
+          <input id="company-editor-name" autofocus type="text" autocomplete="organization" formControlName="razonSocial" aria-required="true" maxlength="150" placeholder="Ej. Empresa S.A.C." [attr.aria-invalid]="fieldError('razonSocial') ? 'true' : null" [attr.aria-describedby]="fieldError('razonSocial') ? 'company-name-error' : null">
+          <p id="company-name-error" class="company-field-error" *ngIf="fieldError('razonSocial')">{{ fieldError('razonSocial') }}</p>
+        </div>
+        <div class="company-field">
+          <label for="company-editor-ruc">RUC <span class="company-required" aria-hidden="true">*</span></label>
+          <input id="company-editor-ruc" type="text" formControlName="ruc" aria-required="true" maxlength="20" placeholder="Ej. 20123456789" [attr.aria-invalid]="fieldError('ruc') ? 'true' : null" [attr.aria-describedby]="fieldError('ruc') ? 'company-ruc-error' : null">
+          <p id="company-ruc-error" class="company-field-error" *ngIf="fieldError('ruc')">{{ fieldError('ruc') }}</p>
+        </div>
+        <div class="company-field">
+          <label for="company-editor-email">Correo electrónico <span class="company-optional">Opcional</span></label>
+          <input id="company-editor-email" type="email" autocomplete="email" formControlName="email" maxlength="100" placeholder="contacto@empresa.com" [attr.aria-invalid]="fieldError('email') ? 'true' : null" [attr.aria-describedby]="fieldError('email') ? 'company-email-error' : null">
+          <p id="company-email-error" class="company-field-error" *ngIf="fieldError('email')">{{ fieldError('email') }}</p>
+        </div>
+        <div class="company-field">
+          <label for="company-editor-phone">Teléfono <span class="company-optional">Opcional</span></label>
+          <input id="company-editor-phone" type="tel" autocomplete="tel" formControlName="telefono" maxlength="30" placeholder="Ej. +51 999 999 999" [attr.aria-invalid]="fieldError('telefono') ? 'true' : null" [attr.aria-describedby]="fieldError('telefono') ? 'company-phone-error' : null">
+          <p id="company-phone-error" class="company-field-error" *ngIf="fieldError('telefono')">{{ fieldError('telefono') }}</p>
+        </div>
+        <div class="company-field company-field-full">
+          <label for="company-editor-address">Dirección <span class="company-optional">Opcional</span></label>
+          <textarea id="company-editor-address" autocomplete="street-address" formControlName="direccion" rows="3" maxlength="255" placeholder="Ingresa la dirección de la empresa." [attr.aria-invalid]="fieldError('direccion') ? 'true' : null" [attr.aria-describedby]="fieldError('direccion') ? 'company-address-error' : null"></textarea>
+          <p id="company-address-error" class="company-field-error" *ngIf="fieldError('direccion')">{{ fieldError('direccion') }}</p>
+        </div>
+        <label class="company-active-control" [class.company-active-off]="!form.get('estado')?.value" for="company-editor-active">
+          <i class="company-state-dot" aria-hidden="true"></i>
+          <span class="company-state-copy"><strong>{{ form.get('estado')?.value ? 'Empresa activa' : 'Empresa inactiva' }}</strong><small id="company-active-hint">{{ form.get('estado')?.value ? 'Habilitada en el sistema.' : 'Deshabilitada en el sistema.' }}</small></span>
+          <span class="company-switch"><input id="company-editor-active" type="checkbox" role="switch" aria-label="Empresa activa" aria-describedby="company-active-hint" formControlName="estado"><span class="company-switch-track" aria-hidden="true"></span></span>
+        </label>
+        <p class="company-feedback company-error company-field-full" *ngIf="errorMessage" role="alert">{{ errorMessage }}</p>
+      </div>
+      <footer class="company-editor-actions"><span>* Campos obligatorios</span><button type="button" class="company-button company-secondary" (click)="closeModal()" [disabled]="saving">Cancelar</button><button type="submit" class="company-button company-primary" [disabled]="saving"><mat-icon aria-hidden="true">{{ saving ? 'hourglass_top' : 'save' }}</mat-icon>{{ saving ? 'Guardando…' : 'Guardar empresa' }}</button></footer>
+    </form>
+  </dialog>
+</section>

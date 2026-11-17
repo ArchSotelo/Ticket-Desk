@@ -1,0 +1,98 @@
+<section class="client-page">
+  <header class="page-header">
+    <div>
+      <p class="contact-eyebrow">Directorio de atención</p>
+      <h1>{{ selectedClient ? 'Perfil del contacto' : 'Contactos' }}</h1>
+      <p>{{ selectedClient ? 'Información del contacto y su historial de tickets.' : 'Personas y su historial de atención.' }}</p>
+    </div>
+    <div class="directory-stats" *ngIf="!selectedClient && !loading && !error" aria-label="Resumen de contactos">
+      <div class="stat"><mat-icon>group</mat-icon><div><strong>{{ clients.length }}</strong><span>contactos</span></div></div>
+      <div class="stat"><span class="status-dot green"></span><div><strong>{{ activeClients }}</strong><span>activos</span></div></div>
+      <div class="stat"><span class="status-dot muted"></span><div><strong>{{ clients.length - activeClients }}</strong><span>inactivos</span></div></div>
+    </div>
+  </header>
+
+  <div class="feedback error" role="alert" *ngIf="error"><mat-icon>error_outline</mat-icon>{{ error }}</div>
+
+  <ng-container *ngIf="!selectedClient; else clientTickets">
+    <section class="directory-card" *ngIf="!error" aria-label="Directorio de contactos" [attr.aria-busy]="loading">
+      <div class="directory-toolbar">
+        <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Buscar por nombre o correo</mat-label><mat-icon matPrefix>search</mat-icon>
+          <input matInput [(ngModel)]="search" (ngModelChange)="guardarBusqueda()" placeholder="Nombre, correo o empresa">
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Empresa</mat-label><mat-select [(ngModel)]="companyFilter" (ngModelChange)="guardarBusqueda()">
+            <mat-option value="">Todas las empresas</mat-option><mat-option *ngFor="let company of companies" [value]="company">{{ company }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Estado</mat-label><mat-select [(ngModel)]="stateFilter" (ngModelChange)="guardarBusqueda()">
+            <mat-option value="">Todos los estados</mat-option><mat-option value="ACTIVO">Activo</mat-option><mat-option value="INACTIVO">Inactivo</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <span class="results-count" aria-live="polite">{{ filteredClients.length }} {{ filteredClients.length === 1 ? 'contacto' : 'contactos' }}</span>
+      </div>
+      <div class="table-scroll" *ngIf="!loading">
+        <table class="contacts-table">
+          <thead><tr><th scope="col">Contacto</th><th scope="col">Empresa</th><th scope="col">Estado</th><th scope="col" class="action-cell">Acciones</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let client of filteredClients">
+              <td><a class="contact-link" [routerLink]="[contactsPath, client.id]">
+                <span class="client-avatar" [class]="'client-avatar avatar-' + (client.id % 6)">{{ initials(client) }}</span>
+                <span class="client-info"><strong>{{ client.nombres }} {{ client.apellidos }}</strong><small>{{ client.email }}</small></span>
+              </a></td>
+              <td class="company-cell">{{ client.empresaNombre || 'Sin empresa' }}</td>
+              <td><span class="client-state" [class.inactive]="client.estado !== 'ACTIVO'"><span class="status-dot"></span>{{ client.estado === 'ACTIVO' ? 'Activo' : 'Inactivo' }}</span></td>
+              <td class="action-cell"><a mat-icon-button [routerLink]="[contactsPath, client.id]" [attr.aria-label]="'Ver contacto ' + client.nombres + ' ' + client.apellidos"><mat-icon>chevron_right</mat-icon></a></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="empty-inline" *ngIf="!filteredClients.length"><mat-icon>person_search</mat-icon><strong>No se encontraron contactos</strong><span>Prueba con otra búsqueda o cambia los filtros.</span></div>
+      </div>
+      <div class="empty-inline" role="status" *ngIf="loading">Cargando contactos…</div>
+    </section>
+  </ng-container>
+
+  <ng-template #clientTickets>
+    <div class="profile-layout">
+      <aside class="directory-card client-summary" aria-label="Datos del contacto">
+        <div class="profile-top"><span class="client-avatar large">{{ initials(selectedClient!) }}</span><span class="client-state" [class.inactive]="selectedClient?.estado !== 'ACTIVO'"><span class="status-dot"></span>{{ selectedClient?.estado === 'ACTIVO' ? 'Activo' : 'Inactivo' }}</span></div>
+        <h3>{{ selectedClient?.nombres }} {{ selectedClient?.apellidos }}</h3>
+        <a class="profile-email" [href]="'mailto:' + selectedClient?.email">{{ selectedClient?.email }}</a>
+        <dl class="profile-details"><div><mat-icon>business</mat-icon><dt>Empresa</dt><dd>{{ selectedClient?.empresaNombre || 'Sin empresa' }}</dd></div>
+          <div *ngIf="selectedClient?.telefono"><mat-icon>phone</mat-icon><dt>Teléfono</dt><dd>{{ selectedClient?.telefono }}</dd></div>
+          <div *ngIf="selectedClient?.areaNombre"><mat-icon>work_outline</mat-icon><dt>Área</dt><dd>{{ selectedClient?.areaNombre }}</dd></div>
+        </dl>
+        <a mat-button class="back-button" [routerLink]="contactsPath"><mat-icon>arrow_back</mat-icon>Volver a contactos</a>
+      </aside>
+      <div class="history-column" [attr.aria-busy]="loadingTickets">
+        <div class="ticket-stats" *ngIf="!ticketError">
+          <div class="stat"><span class="stat-icon"><mat-icon>description</mat-icon></span><div><span>Total</span><strong>{{ loadingTickets ? '—' : tickets.length }} <small>tickets</small></strong></div></div>
+          <div class="stat"><span class="stat-icon amber"><mat-icon>schedule</mat-icon></span><div><span>Sin cerrar</span><strong>{{ loadingTickets ? '—' : tickets.length - closedTickets }} <small>tickets</small></strong></div></div>
+          <div class="stat"><span class="stat-icon success"><mat-icon>done</mat-icon></span><div><span>Cerrados</span><strong>{{ loadingTickets ? '—' : closedTickets }} <small>tickets</small></strong></div></div>
+        </div>
+        <section class="directory-card ticket-history" aria-label="Historial de tickets">
+          <div class="history-toolbar"><h3>Historial de tickets</h3>
+            <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic"><mat-label>Buscar por asunto o ticket</mat-label><mat-icon matPrefix>search</mat-icon><input matInput [(ngModel)]="ticketSearch"></mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic"><mat-label>Estado</mat-label><mat-select [(ngModel)]="ticketStateFilter"><mat-option value="">Todos los estados</mat-option><mat-option *ngFor="let state of ticketStates" [value]="state.code">{{ state.name }}</mat-option></mat-select></mat-form-field>
+          </div>
+          <p class="history-note" *ngIf="ticketTotal > tickets.length && !loadingTickets">Se muestran los últimos {{ tickets.length }} de {{ ticketTotal }} tickets. Los contadores y filtros corresponden a los tickets mostrados.</p>
+          <div class="feedback error" role="alert" *ngIf="ticketError">{{ ticketError }}<button mat-button (click)="loadTickets(selectedClient!.id)">Reintentar</button></div>
+          <div class="table-scroll" *ngIf="!loadingTickets && !ticketError">
+            <table class="tickets-table"><thead><tr><th scope="col">Ticket</th><th scope="col">Estado</th><th scope="col">Fecha</th><th scope="col" class="action-cell">Acciones</th></tr></thead>
+              <tbody><tr *ngFor="let ticket of filteredTickets">
+                <td><a class="contact-link" [routerLink]="ticketPath(ticket.id)" [queryParams]="{ returnTo: contactsPath + '/' + selectedClient!.id }"><mat-icon class="ticket-icon">confirmation_number</mat-icon><span class="ticket-info"><strong>{{ ticket.titulo }}</strong><small>{{ ticket.codigo }}</small></span></a></td>
+                <td><span [class]="'ticket-status ' + statusClass(ticket.estadoCodigo)"><span class="status-dot"></span>{{ ticket.estadoNombre }}</span></td>
+                <td class="date-cell">{{ date(ticket.fechaCreacion) }}</td>
+                <td class="action-cell"><a mat-icon-button [routerLink]="ticketPath(ticket.id)" [queryParams]="{ returnTo: contactsPath + '/' + selectedClient!.id }" [attr.aria-label]="'Ver ticket ' + ticket.codigo"><mat-icon>chevron_right</mat-icon></a></td>
+              </tr></tbody>
+            </table>
+            <div class="empty-inline" *ngIf="!filteredTickets.length"><mat-icon>confirmation_number</mat-icon><strong>{{ tickets.length ? 'No se encontraron tickets' : 'Este contacto todavía no tiene tickets' }}</strong><span *ngIf="tickets.length">Prueba con otra búsqueda o cambia el estado.</span></div>
+          </div>
+          <div class="empty-inline" role="status" *ngIf="loadingTickets">Cargando tickets…</div>
+        </section>
+      </div>
+    </div>
+  </ng-template>
+</section>

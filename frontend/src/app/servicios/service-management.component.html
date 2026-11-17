@@ -1,0 +1,71 @@
+<section class="service-list-workspace" aria-labelledby="service-list-heading">
+  <header class="service-list-page-heading">
+    <div><p class="service-list-eyebrow">{{ canManage ? 'Administración' : 'Portal del técnico' }}</p><h1 id="service-list-heading">Servicios</h1><p>Consulta el estado y la vigencia de tus servicios.</p></div>
+    <div class="service-list-header-actions">
+      <a class="service-list-button service-list-secondary" [routerLink]="[basePath, 'historial']"><mat-icon aria-hidden="true">history</mat-icon>Historial general</a>
+      <button type="button" class="service-list-button service-list-secondary" (click)="exportar()" [disabled]="exporting" title="Exportar todos los servicios activos, por vencer y vencidos"><mat-icon aria-hidden="true">{{ exporting ? 'hourglass_top' : 'download' }}</mat-icon>{{ exporting ? 'Exportando…' : 'Exportar' }}</button>
+      <button type="button" class="service-list-button service-list-primary" (click)="openCreate()"><mat-icon aria-hidden="true">add</mat-icon>Nuevo servicio</button>
+    </div>
+  </header>
+  <p class="service-list-feedback service-list-error" *ngIf="exportError" role="alert">{{ exportError }}</p>
+  <div class="service-list-feedback service-list-error" *ngIf="iconsError" role="alert">{{ iconsError }}<button type="button" (click)="loadCategorias()" [disabled]="loadingIcons">Reintentar iconos</button></div>
+
+  <section class="service-list-summary" aria-label="Gasto mensual por divisa" [attr.aria-busy]="loading">
+    <article class="service-list-currency-card" *ngFor="let currency of divisasConTotal(); trackBy: trackCurrency" [class.service-list-currency-green]="currency === 'USD'">
+      <span class="service-list-currency-icon" aria-hidden="true"><mat-icon>payments</mat-icon></span>
+      <div><p>Gasto mensual <span class="service-list-currency-code">{{ currency }}</span></p><strong>{{ formatCost(totalesPorDivisa[currency], currency) }}</strong></div>
+    </article>
+    <p class="service-list-summary-hint" *ngIf="loading" role="status">Cargando gastos por divisa…</p>
+    <p class="service-list-summary-hint" *ngIf="loaded && !divisasConTotal().length">Sin gastos para los filtros aplicados.</p>
+  </section>
+
+  <form class="service-list-filters" (submit)="$event.preventDefault(); buscar()" aria-label="Filtros de servicios">
+    <div class="service-list-field service-list-search">
+      <label for="service-list-search">Buscar servicio</label>
+      <div><mat-icon aria-hidden="true">search</mat-icon><input id="service-list-search" name="busqueda" type="search" placeholder="Servicio, proveedor o responsable" [(ngModel)]="busqueda"></div>
+    </div>
+    <div class="service-list-field">
+      <label for="service-list-status">Estado</label>
+      <select id="service-list-status" name="estadoFiltro" [(ngModel)]="estadoFiltro"><option value="">Todos los estados</option><option value="ACTIVO">Activos</option><option value="POR_VENCER">Por vencer</option><option value="VENCIDO">Vencidos</option></select>
+    </div>
+    <button type="button" class="service-list-button service-list-secondary" (click)="clearFilters()" [disabled]="!hasFilters">Limpiar</button>
+    <button type="submit" class="service-list-button service-list-primary"><mat-icon aria-hidden="true">filter_alt</mat-icon>Filtrar</button>
+  </form>
+
+  <section class="service-list-directory" aria-label="Directorio de servicios">
+    <div class="service-list-results"><h2>Directorio de servicios</h2><p aria-live="polite">{{ loading ? 'Cargando servicios…' : loaded ? totalElements + (totalElements === 1 ? ' servicio encontrado' : ' servicios encontrados') : 'Listado no disponible' }}</p></div>
+    <div class="service-list-feedback service-list-error service-list-load-error" *ngIf="loadError" role="alert">{{ loadError }}<button type="button" (click)="load()" [disabled]="loading">Reintentar servicios</button></div>
+    <div class="service-list-table-scroll" [attr.aria-busy]="loading">
+      <table class="service-list-table"><caption class="service-list-sr-only">Servicios vigentes o vencidos, vigencia, divisa, costo mensual y responsable</caption>
+        <thead><tr><th scope="col">Servicio</th><th scope="col">Vigencia</th><th scope="col">Estado</th><th scope="col">Costo mensual</th><th scope="col">Responsable</th><th scope="col">Acciones</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let service of servicios; trackBy: trackService">
+            <td><span class="service-list-identity"><span class="service-list-avatar" aria-hidden="true"><mat-icon>{{ iconoServicio(service) }}</mat-icon></span><span><strong>{{ service.nombre }}</strong><small>{{ service.proveedor }}</small></span></span></td>
+            <td><div class="service-list-dates"><span><small>Inicio:</small>{{ formatDate(service.fechaInicio) }}</span><span><small>Fin:</small>{{ formatDate(service.fechaFin) }}</span></div></td>
+            <td><span class="service-list-status-pill" [ngClass]="statusClass(service.estado)"><i aria-hidden="true"></i>{{ statusLabel(service.estado) }}</span></td>
+            <td class="service-list-cost-cell"><strong>{{ formatCost(service.costoMensual, service.divisa) }}</strong></td>
+            <td class="service-list-responsible-cell">{{ service.responsable || 'Sin asignar' }}</td>
+            <td><button type="button" class="service-list-detail-button" (click)="edit(service)" [attr.aria-label]="'Ver detalle de ' + service.nombre"><mat-icon aria-hidden="true">visibility</mat-icon>Ver detalle</button></td>
+          </tr>
+          <tr *ngIf="!servicios.length"><td colspan="6"><div class="service-list-empty">
+            <mat-icon aria-hidden="true">{{ loading ? 'hourglass_top' : loadError ? 'cloud_off' : 'inventory_2' }}</mat-icon>
+            <h2>{{ loading ? 'Cargando directorio…' : loadError ? 'El directorio no está disponible' : 'No hay servicios con los filtros aplicados' }}</h2>
+            <p *ngIf="!loading && !loadError">Prueba con otro servicio, proveedor, responsable o estado.</p>
+            <button *ngIf="loaded && hasFilters" type="button" class="service-list-button service-list-secondary" (click)="clearFilters()">Limpiar filtros</button>
+          </div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="service-list-pagination" *ngIf="loaded">
+      <p>Mostrando <strong>{{ firstItem }}–{{ lastItem }}</strong> de {{ totalElements }}</p>
+      <div class="service-list-pagination-controls">
+        <label for="service-list-page-size">Filas</label><select id="service-list-page-size" name="pageSize" [ngModel]="pageSize" (ngModelChange)="changeSize($event)" [disabled]="loading"><option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option></select>
+        <nav class="service-list-pages" aria-label="Paginación de servicios">
+          <button type="button" aria-label="Página anterior" [disabled]="pageIndex === 0 || loading" (click)="goTo(pageIndex - 1)"><mat-icon aria-hidden="true">chevron_left</mat-icon></button>
+          <button type="button" *ngFor="let page of visiblePages()" [class.selected]="page === pageIndex" [attr.aria-current]="page === pageIndex ? 'page' : null" [attr.aria-label]="'Página ' + (page + 1)" [disabled]="loading" (click)="goTo(page)">{{ page + 1 }}</button>
+          <button type="button" aria-label="Página siguiente" [disabled]="totalPages === 0 || pageIndex >= totalPages - 1 || loading" (click)="goTo(pageIndex + 1)"><mat-icon aria-hidden="true">chevron_right</mat-icon></button>
+        </nav>
+      </div>
+    </footer>
+  </section>
+</section>

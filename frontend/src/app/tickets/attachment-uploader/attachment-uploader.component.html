@@ -1,0 +1,47 @@
+    <section class="attachment-section support-panel">
+      <div class="support-panel-header">
+        <h3><mat-icon>attach_file</mat-icon> Archivos adjuntos y evidencias</h3>
+        <p class="subtitle">Arrastra archivos aquí o pega capturas de pantalla con <code>Ctrl + V</code>.</p>
+      </div>
+
+      <div
+        class="drop-zone"
+        [class.dragging]="isDragging"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)">
+        <mat-icon class="cloud-icon">cloud_upload</mat-icon>
+        <p>Arrastra y suelta evidencias (PNG/JPEG/GIF/WebP, PDF, DOCX, XLSX, PPTX y texto/CSV)</p>
+        <button mat-stroked-button color="primary" type="button" (click)="fileInput.click()">
+          Seleccionar archivos
+        </button>
+        <input #fileInput type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.docx,.xlsx,.pptx,.txt,.log,.csv" multiple hidden (change)="onFileSelected($event)">
+      </div>
+
+      <mat-progress-bar
+        *ngIf="uploadProgress > 0 && uploadProgress < 100"
+        class="mt-2"
+        mode="determinate"
+        [value]="uploadProgress">
+      </mat-progress-bar>
+
+      <div class="attachment-grid support-attachments-grid mt-3">
+        <article class="attachment-card jira-card support-attachment-card" *ngFor="let file of attachments">
+          <div class="file-icon support-attachment-icon">
+            <mat-icon>{{ getFileIcon(file.mimeType) }}</mat-icon>
+          </div>
+          <div class="file-details support-attachment-info">
+            <span class="file-name" [title]="file.nombreOriginal">{{ file.nombreOriginal }}</span>
+            <span class="file-size">{{ formatSize(file.tamanoBytes) }} | {{ file.usuarioCreacionNombre }}</span>
+          </div>
+          <div class="file-actions">
+            <a [href]="file.downloadUrl" target="_blank" mat-icon-button color="primary" title="Descargar">
+              <mat-icon>download</mat-icon>
+            </a>
+            <button mat-icon-button color="warn" type="button" (click)="eliminar(file.id)" title="Eliminar">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
